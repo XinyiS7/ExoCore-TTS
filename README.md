@@ -77,6 +77,21 @@ E:/Miniconda3/envs/voxcpm_runtime/python.exe tools/cast.py register \
 
 `register` 落地前会做体检（可读性 / 时长 ≥ 3s / 非静音），削顶只警告；逐字稿是**强制项**。
 
+## 云端参考渲染（`tools/render_reference.py` + `tools/create_cloud_voice.py`）
+
+本地引擎克隆的那些参考音频是**云端渲出来的**，所以这条链路必须能重跑：声线资源
+（`tools/cloud/voices/ale.json` 记 id，声线本体由 `tools/cloud/prompts/ale.txt` 定义）＋
+逐语言配方（`tools/cloud/prompts/recipe_zh.txt` / `recipe_en_de.txt`）＋ 一段**逐字稿已知**的文本。
+工具跑在服务环境 `voxcpm_runtime`（那里有带 `SpeechMetadata` 的 google-genai）：
+
+```bash
+E:/Miniconda3/envs/voxcpm_runtime/python.exe tools/create_cloud_voice.py              # 复用（或 --force 重建）声线资源
+E:/Miniconda3/envs/voxcpm_runtime/python.exe tools/render_reference.py     --record tools/cloud/voices/ale.json --text-file <逐字稿文件>     --style-file tools/cloud/prompts/recipe_zh.txt     --out candidates/<batch> --label <名字> --takes 2
+```
+
+API key 只在调用时从 `GEMINI_API_KEY` 或 `ExoCore/.env` 现取：**不进本仓、不打印**，报错信息也过
+`scrub_secrets`。渲出来的音频用 `tools/cast.py register` 冻结（逐字稿是强制项）。
+
 ## 里程碑
 
 | | 内容 | 状态 |

@@ -1,0 +1,8 @@
+{
+  "display_name": "Ale",
+  "model": "gemini-3.8-flash-tts",
+  "voice_id": "voice_nnvw5qprqmz7",
+  "prompt": "ale.txt",
+  "created": "2026-09-26",
+  "note": "Account-level prompted voice, rebuilt from Alicia's own delivery prompt after the truncated first attempt was deleted. Expires 2027-09-26: recreate from prompts/ale.txt if it lapses. This record is the only durable copy of the id (the API key is not here)."
+}
