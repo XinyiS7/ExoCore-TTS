@@ -56,11 +56,23 @@ voices/sandro_v1/
 
 `voice.json` 与 ExoCore 的 `VoiceProfile` 一一对应：`name ← key`、`engine`、`baseline_instruction`、`generation_defaults`。`prompt_text` 是被朗读的那句原文，做 ultimate cloning（参考音频 + 逐字稿）时要用。
 
+参考音频不一定来自本仓的候选池——云端渲染、手工剪的片段都行，用 `register` 收进来（`pick` 只能收本批候选）：
+
+```bash
+E:/Miniconda3/envs/voxcpm_runtime/python.exe tools/cast.py register \
+    --clip path/to/cloud_render.wav --key sandro_v1 --display-name Sandro \
+    --transcript-file path/to/transcript.txt --style "风格指令" \
+    --origin "gemini-3.8-flash-tts / voice_xxx"
+```
+
+`register` 落地前会做体检（可读性 / 时长 ≥ 3s / 非静音），削顶只警告；逐字稿是**强制项**。
+
 ## 里程碑
 
 | | 内容 | 状态 |
 |---|---|---|
 | **M1** | 仓库骨架 + 声音资产库 + 选角台（本文件描述的工具） | ✅ 已落地 |
+| **M1.5** | `register` 子命令（收外部参考音频）+ 资产体检 + 首条正式声线 `sandro_v1` | ✅ 已落地 |
 | **M2** | `POST /tts` + `GET /health` 守护进程（`backends/fake` 用于契约测试 + `backends/voxcpm2` 真推理；按需加载、空闲卸载） | 待施工 |
 | **M3** | ExoCore 适配器改 key-based + `base_url` 配置化 + 区分「冷启动中」与「服务离线」（跨仓计划落 `ExoCore/Plan/`） | 待施工 |
 | **M4** | 工具侧 `send_voice_msg`（落库即开始合成）+ 前端独立语音条 | 待施工 |
@@ -127,6 +139,18 @@ E:/Miniconda3/envs/voxcpm_runtime/python.exe tools/cast.py clone \
 - **省时间**：模型一批只加载一次；`--dry-run` 可以先看计划不花 GPU。
 
 单条台词的时长大致是 `字数 × 0.35 秒`（RTF ≈ 2.1），一次选角建议 8~12 条台词，别一次跑几百条。
+
+## 实测经验（选角阶段，2026-09）
+
+这些是花过 GPU 时间和 API 次数换来的，别重复踩：
+
+- **参考音频同时承载音色、口音和语速。** 同一批台词、同一 seed，只换参考音频，产出时长会贴着参考走（参考慢则产出慢）。所以：**语速靠参考调，不是靠命令行参数**；口音同理。
+- **逐字稿是克隆的钥匙。** 同一个参考，只用参考音频 vs 参考 + 逐字稿（ultimate / combined 模式），产出总时长 25.8s vs 37.9s——参考的节奏只在给了逐字稿之后才被真正继承。只给参考是本模型最弱的模式。
+- **括号风格前缀只在 Voice Design 模式有效。** 克隆模式下会把指令当正文念出来（`（加重并略微放慢…）` 真被朗读了）。想控制重点/语气，只能靠参考音频或换后端。
+- **多音字错读是随机的。** 实测 `还`（hái）被读成 `huán`；随后同句重跑三次全部正确。→ 靠重试规避，不要为此改写文本。
+- **别用 librosa 变速当参考。** 相位声码器会让 0.8× 拉伸失真成“旧磁带”；要慢就在云端按风格指令重渲一条慢的。
+- **发音抽检只能当报警器。** 把产出回送给 ASR 转写并与原文比对，能抓住真实异常，但会因语调误报（实测一条完全正确的台词被听成缺字）。单次转写不可信，至少要两次一致。
+- **本地引擎英语/德语可用**：逐字正确（含德语变音符号），RTF ≈ 2.0–2.8（比中文便宜）。但参考决定语言与口音，所以**每种语言需要各自的参考音频**（多参考资产尚未实现）。
 
 ## 与其它仓库的关系
 
