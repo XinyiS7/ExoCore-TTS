@@ -29,7 +29,7 @@ from pathlib import Path
 from typing import Sequence
 
 from exocore_tts.config import candidate_root
-from exocore_tts.voices import VoiceAsset, list_voices, save_voice, validate_key
+from exocore_tts.voices import VoiceAsset, describe_clip, list_voices, save_voice, validate_key
 
 MODEL_ID = "openbmb/VoxCPM2"
 MANIFEST_NAME = "manifest.json"
@@ -443,6 +443,62 @@ def pick_candidate(
     return asset
 
 
+def register_reference(
+    clip: Path,
+    key: str,
+    *,
+    transcript: str,
+    display_name: str = "",
+    style: str = "",
+    engine: str = "voxcpm2",
+    origin: str = "",
+    force: bool = False,
+) -> VoiceAsset:
+    """Freeze an externally produced clip as a voice.
+
+    Casting draws candidates locally, but a reference clip may come from anywhere -- a cloud
+    render, a hand-cut take of an existing recording. Those arrive with no batch manifest, so
+    the provenance and the exact transcript are supplied here instead. The transcript is
+    mandatory because it is what turns a reference asset into a strong clone: reference-only
+    cloning is this model's weakest mode.
+    """
+    validate_key(key)
+    transcript = (transcript or "").strip()
+    if not transcript:
+        raise ValueError(
+            "An exact transcript is required: reference-only cloning is the weakest mode, "
+            "and the transcript is what makes it work."
+        )
+
+    info = describe_clip(Path(clip))
+    asset = VoiceAsset(
+        key=key,
+        display_name=display_name or key,
+        engine=engine,
+        baseline_instruction=style,
+        prompt_text=transcript,
+        generation_defaults={"cfg_value": DEFAULT_CFG, "inference_timesteps": DEFAULT_TIMESTEPS},
+        source={
+            "origin": origin,
+            "clip_seconds": round(info.seconds, 2),
+            "sample_rate": info.sample_rate,
+            "channels": info.channels,
+            "peak": round(info.peak, 4),
+            "frozen_at": _now(),
+        },
+    )
+    target_dir = save_voice(asset, Path(clip), force=force)
+    print(f"voice  : {asset.key} ({asset.display_name})")
+    print(f"frozen : {target_dir}")
+    print(f"clip   : {target_dir / asset.reference_clip}  ({info.seconds:.2f}s @ {info.sample_rate}Hz)")
+    if info.clipped:
+        print(f"warn   : peak {info.peak:.3f} is clipping; cloning inherits that harshness")
+    if origin:
+        print(f"origin : {origin}")
+    print(f"prompt : {asset.prompt_text[:48]!r}...")
+    return asset
+
+
 def list_batch(batch_dir: Path) -> int:
     """Print the finished candidates of a batch, for the by-ear picking step."""
     manifest = _open_existing_batch(Path(batch_dir))
@@ -468,7 +524,9 @@ def list_voice_assets() -> int:
         return 0
     print(f"{len(assets)} frozen voice(s):")
     for asset in assets:
-        print(f"  {asset.key:<20} engine={asset.engine:<8} prompt={asset.prompt_text[:28]!r}")
+        seconds = asset.source.get("clip_seconds")
+        age = f"{seconds}s" if seconds else "?"
+        print(f"  {asset.key:<20} engine={asset.engine:<8} clip={age:<7} prompt={asset.prompt_text[:24]!r}")
     return 0
 
 
@@ -509,6 +567,19 @@ def build_parser() -> argparse.ArgumentParser:
     pick.add_argument("--style", default="", help="baseline style description stored with the voice")
     pick.add_argument("--force", action="store_true", help="replace an existing voice with the same key")
 
+    register = subparsers.add_parser(
+        "register", help="freeze an externally produced clip (cloud render, hand-cut take) into voices/<key>/"
+    )
+    register.add_argument("--clip", required=True, type=Path, help="reference WAV to freeze")
+    register.add_argument("--key", required=True, help="voice key, e.g. sandro_v1")
+    register.add_argument("--transcript", default="", help="exact words spoken in the clip")
+    register.add_argument("--transcript-file", dest="transcript_file", default="", help="file holding that transcript")
+    register.add_argument("--display-name", default="")
+    register.add_argument("--style", default="", help="baseline style instruction stored with the voice")
+    register.add_argument("--engine", default="voxcpm2", help="backend that should consume this asset")
+    register.add_argument("--origin", default="", help="provenance note, e.g. 'gemini-3.8-flash-tts voice_nnvw5qprqmz7'")
+    register.add_argument("--force", action="store_true", help="replace an existing voice with the same key")
+
     list_cmd = subparsers.add_parser("list", help="inspect a batch, or the frozen voices when --from is omitted")
     list_cmd.add_argument("--from", dest="batch_dir", default="", help="batch directory to inspect")
     list_cmd.add_argument("--voices", action="store_true", help="list frozen voices instead of a batch")
@@ -519,6 +590,22 @@ def build_parser() -> argparse.ArgumentParser:
 def main(argv: Sequence[str] | None = None) -> int:
     parser = build_parser()
     args = parser.parse_args(argv)
+
+    if args.command == "register":
+        transcript = args.transcript
+        if args.transcript_file:
+            transcript = Path(args.transcript_file).read_text(encoding="utf-8").strip()
+        register_reference(
+            Path(args.clip),
+            args.key,
+            transcript=transcript,
+            display_name=args.display_name,
+            style=args.style,
+            engine=args.engine,
+            origin=args.origin,
+            force=args.force,
+        )
+        return 0
 
     if args.command == "pick":
         pick_candidate(

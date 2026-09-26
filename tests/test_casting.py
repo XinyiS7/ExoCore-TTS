@@ -180,6 +180,91 @@ class ManifestTests(unittest.TestCase):
             casting.pick_candidate(self.batch, "9", "sandro_v1")
 
 
+class RegisterTests(unittest.TestCase):
+    """Freezing a clip that was produced outside the casting bench (cloud render, hand cut)."""
+
+    def setUp(self):
+        self._tmp = tempfile.TemporaryDirectory()
+        self.root = Path(self._tmp.name)
+        self._previous = os.environ.get("EXOCORE_TTS_VOICE_ROOT")
+        os.environ["EXOCORE_TTS_VOICE_ROOT"] = str(self.root / "voices")
+
+    def tearDown(self):
+        if self._previous is None:
+            os.environ.pop("EXOCORE_TTS_VOICE_ROOT", None)
+        else:
+            os.environ["EXOCORE_TTS_VOICE_ROOT"] = self._previous
+        self._tmp.cleanup()
+
+    def _write_wav(self, name: str = "ref.wav", *, seconds: float = 5.0, peak: float = 0.6) -> Path:
+        import numpy as np
+        import soundfile as sf
+
+        path = self.root / name
+        rate = 24000
+        t = np.arange(int(rate * seconds)) / rate
+        sf.write(str(path), (peak * np.sin(2 * np.pi * 220 * t)).astype("float32"), rate, format="WAV")
+        return path
+
+    def test_register_freezes_the_clip_and_records_its_provenance(self):
+        clip = self._write_wav()
+        with contextlib.redirect_stdout(io.StringIO()):
+            asset = casting.register_reference(
+                clip,
+                "sandro_v1",
+                transcript="把手给我，别躲。",
+                display_name="Sandro",
+                style="0.8x pace, crisp retroflex",
+                origin="gemini-3.8-flash-tts voice_nnvw5qprqmz7",
+            )
+        self.assertEqual(asset.key, "sandro_v1")
+        self.assertEqual(asset.display_name, "Sandro")
+        self.assertEqual(asset.prompt_text, "把手给我，别躲。")
+        self.assertEqual(asset.baseline_instruction, "0.8x pace, crisp retroflex")
+        self.assertEqual(asset.source["origin"], "gemini-3.8-flash-tts voice_nnvw5qprqmz7")
+        self.assertAlmostEqual(asset.source["clip_seconds"], 5.0, places=2)
+        self.assertEqual(asset.source["sample_rate"], 24000)
+        stored = self.root / "voices" / "sandro_v1" / voices.DEFAULT_REFERENCE_CLIP
+        self.assertEqual(stored.read_bytes(), clip.read_bytes())
+        self.assertEqual(voices.load_voice("sandro_v1").prompt_text, "把手给我，别躲。")
+
+    def test_register_requires_the_exact_transcript(self):
+        clip = self._write_wav()
+        with self.assertRaises(ValueError) as caught:
+            casting.register_reference(clip, "sandro_v1", transcript="   ")
+        self.assertIn("transcript", str(caught.exception))
+
+    def test_register_refuses_silent_and_truncated_clips(self):
+        silent = self._write_wav("silent.wav", peak=0.0)
+        with self.assertRaises(ValueError) as caught:
+            casting.register_reference(silent, "sandro_v1", transcript="一")
+        self.assertIn("silent", str(caught.exception))
+
+        short = self._write_wav("short.wav", seconds=1.0)
+        with self.assertRaises(ValueError) as caught:
+            casting.register_reference(short, "sandro_v1", transcript="一")
+        self.assertIn("too short", str(caught.exception))
+
+    def test_register_warns_about_a_clipping_reference(self):
+        clip = self._write_wav(peak=1.0)
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out):
+            casting.register_reference(clip, "sandro_v1", transcript="一")
+        self.assertIn("clipping", out.getvalue())
+
+    def test_register_will_not_silently_replace_a_frozen_voice(self):
+        first = self._write_wav("first.wav")
+        second = self._write_wav("second.wav", seconds=6.0)
+        with contextlib.redirect_stdout(io.StringIO()):
+            casting.register_reference(first, "sandro_v1", transcript="一")
+        with self.assertRaises(FileExistsError):
+            casting.register_reference(second, "sandro_v1", transcript="二")
+        with contextlib.redirect_stdout(io.StringIO()):
+            casting.register_reference(second, "sandro_v1", transcript="二", force=True)
+        self.assertEqual(voices.load_voice("sandro_v1").prompt_text, "二")
+        self.assertAlmostEqual(voices.load_voice("sandro_v1").source["clip_seconds"], 6.0, places=2)
+
+
 class AudioWriteTests(unittest.TestCase):
     def test_wav_is_published_atomically_from_a_tmp_sibling(self):
         """Regression: soundfile cannot infer the container from a `.wav.tmp` name."""

@@ -33,6 +33,60 @@ KEY_PATTERN = re.compile(r"[a-z0-9][a-z0-9_]*")
 VOICE_MANIFEST = "voice.json"
 DEFAULT_REFERENCE_CLIP = "reference.wav"
 
+MIN_REFERENCE_SECONDS = 3.0
+SILENCE_PEAK = 0.02
+CLIPPING_PEAK = 0.999
+
+
+@dataclass
+class ClipInfo:
+    """Measured properties of a reference clip, used to refuse unusable audio."""
+
+    seconds: float
+    sample_rate: int
+    channels: int
+    peak: float
+
+    @property
+    def clipped(self) -> bool:
+        return self.peak >= CLIPPING_PEAK
+
+
+def describe_clip(path: Path) -> ClipInfo:
+    """Read a clip's real audio properties.
+
+    A reference clip is the one asset that cannot be regenerated from source, so it is
+    measured before it is frozen: silent or truncated files (a raw PCM dump without a
+    header, a clip cut mid-word) must fail here rather than silently become a voice.
+    """
+    import numpy as np
+    import soundfile as sf
+
+    path = Path(path)
+    if not path.is_file():
+        raise FileNotFoundError(f"Reference clip not found: {path}")
+    try:
+        samples, sample_rate = sf.read(str(path), always_2d=False)
+    except Exception as exc:  # sf raises its own error types; the message is the finding
+        raise ValueError(f"Not readable as audio: {path} ({exc})") from exc
+
+    if samples.ndim > 1:
+        channels = samples.shape[1]
+    else:
+        channels = 1
+    seconds = len(samples) / float(sample_rate)
+    peak = float(np.abs(samples).max()) if len(samples) else 0.0
+    info = ClipInfo(seconds=seconds, sample_rate=sample_rate, channels=channels, peak=peak)
+    if info.seconds < MIN_REFERENCE_SECONDS:
+        raise ValueError(
+            f"Reference clip is too short ({info.seconds:.2f}s < {MIN_REFERENCE_SECONDS}s): {path}"
+        )
+    if info.peak < SILENCE_PEAK:
+        raise ValueError(
+            f"Reference clip is silent (peak {info.peak:.4f} < {SILENCE_PEAK}): {path}"
+        )
+    return info
+
 
 def validate_key(key: str) -> str:
     """Voice keys are stable identifiers that also become directory names."""
