@@ -1,0 +1,18 @@
+# ── Python ──
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
+build/
+dist/
+*.sqlite3
+
+# ── IDE ──
+.idea/
+.vscode/
+
+# ── 本地产物 ──
+# 选角候选随时可重生成；定稿的声音资产请用 `cast.py pick` 落到 voices/<key>/（那个要进 git）
+candidates/
+*.tmp

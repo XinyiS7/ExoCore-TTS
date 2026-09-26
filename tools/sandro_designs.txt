@@ -1,0 +1,14 @@
+# Sandro 选角候选 —— 第 1 轮 Voice Design
+#
+# 用法：
+#   python tools/cast.py design --designs tools/sandro_designs.txt \
+#       --lines tools/sandro_lines.txt --out candidates/round1 --repeats 2
+#
+# 脚本会自动把描述包进括号、摆在台词最前面：(描述)台词 —— 这是 VoxCPM2 Voice Design 的语法。
+# 中英描述各留两条：同一个意图换个写法结果可能差很多，正好当对照。
+# '#' 开头的行会被忽略。
+
+成年男性，低沉醇厚的胸腔共鸣，语速偏慢，克制而笃定，轻微气声
+三十五岁左右的男性，沙哑低音，慵懒中带一点危险的笑意
+A mature male voice, low chest resonance, measured pace, restrained and certain, light breathiness
+A man in his mid-thirties, husky low register, languid with a hint of dangerous amusement

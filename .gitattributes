@@ -1,0 +1,21 @@
+* text=auto
+
+*.py   text eol=lf
+*.md   text eol=lf
+*.toml text eol=lf
+*.json text eol=lf
+*.yml  text eol=lf
+*.yaml text eol=lf
+*.sh   text eol=lf
+
+*.ps1 text eol=crlf
+
+*.png  binary
+*.jpg  binary
+*.jpeg binary
+*.zip  binary
+
+# 声音资产与渲染产物：永远按二进制处理，禁止任何行尾转换
+*.wav  binary
+*.flac binary
+*.mp3  binary
