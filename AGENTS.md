@@ -16,6 +16,7 @@
 - 声音资产（`voices/<key>/`）由本仓拥有。`reference.wav` 是选角成果，覆盖必须显式（`--force`）。
 - 重量级依赖（torch / voxcpm）只允许存活在本服务自己的 conda 环境 `voxcpm_runtime`；**绝不**写进 `ExoCore/requirements.txt`。
 - 显存纪律：3060 Ti 可用约 6.8GB，实测 94 字台词峰值约 6.4GB。单条台词有 120 字 guard，不要并发多条合成。
+- **提交内存纪律**：加载权重需要 ≥ ~8GB 空闲 commit；本机页面文件只有 3GB，加载会间歇性失败（`OSError 1455` / segfault）。遇到这种情况先看 README 的「环境」段，不要怀疑代码。
 - 严禁空 catch 或伪成功降级：失败要如实暴露成错误码，不要假装成功。
 
 ## Commands

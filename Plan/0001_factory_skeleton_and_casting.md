@@ -20,6 +20,9 @@
 
 ## 验证
 
-- `python.exe -m unittest discover -s tests -v`（在 `voxcpm_runtime` 环境）全绿；覆盖计划展开、模式参数互斥、字数 guard、manifest 增量与原子性、pick 冻结链路、资产库读写与防覆盖。
+- `python.exe -m unittest discover -s tests -v`（在 `voxcpm_runtime` 环境）全绿（28 项）；覆盖计划展开、模式参数互斥、字数 guard、manifest 增量与原子性、pick 冻结链路、资产库读写与防覆盖、WAV 原子落盘格式推断回归。
 - `tools/cast.py design ... --dry-run` 能在不加载模型的情况下打印完整计划。
-- **未做真机合成冒烟**：首次真实合成需要 GPU + 模型加载（约数分钟），留给 Alicia 起第一轮选角时顺势完成。
+- **真机合成冒烟已完成（2026-09-26）**：`candidates/round1` 一批 64 条候选全跑通——冷启动 41.7s，合成合计 6.2 分钟，平均 RTF 2.10，峰值显存 5458MB。
+- 冒烟途中确认的两个环境事实（已写进 README）：
+  1. `soundfile` 无法从 `.wav.tmp` 推断容器格式 → 已改为显式 `format="WAV"` 并补回归测试；
+  2. 加载权重需要 ≥ ~8GB 空闲 commit，本机页面文件只有 3GB，实测 4 次加载失败 2 次 → M2 开工前建议先把页面文件提到 16GB。
