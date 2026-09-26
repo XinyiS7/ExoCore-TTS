@@ -228,6 +228,15 @@ class RegisterTests(unittest.TestCase):
         self.assertEqual(stored.read_bytes(), clip.read_bytes())
         self.assertEqual(voices.load_voice("sandro_v1").prompt_text, "把手给我，别躲。")
 
+    def test_register_records_the_settled_generation_parameters(self):
+        clip = self._write_wav()
+        with contextlib.redirect_stdout(io.StringIO()):
+            asset = casting.register_reference(
+                clip, "sandro_v1", transcript="把手给我。", cfg_value=3.5, inference_timesteps=16
+            )
+        self.assertEqual(asset.generation_defaults, {"cfg_value": 3.5, "inference_timesteps": 16})
+        self.assertEqual(voices.load_voice("sandro_v1").generation_defaults["cfg_value"], 3.5)
+
     def test_register_requires_the_exact_transcript(self):
         clip = self._write_wav()
         with self.assertRaises(ValueError) as caught:

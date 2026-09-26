@@ -452,6 +452,8 @@ def register_reference(
     style: str = "",
     engine: str = "voxcpm2",
     origin: str = "",
+    cfg_value: float = DEFAULT_CFG,
+    inference_timesteps: int = DEFAULT_TIMESTEPS,
     force: bool = False,
 ) -> VoiceAsset:
     """Freeze an externally produced clip as a voice.
@@ -477,7 +479,10 @@ def register_reference(
         engine=engine,
         baseline_instruction=style,
         prompt_text=transcript,
-        generation_defaults={"cfg_value": DEFAULT_CFG, "inference_timesteps": DEFAULT_TIMESTEPS},
+        generation_defaults={
+            "cfg_value": cfg_value,
+            "inference_timesteps": inference_timesteps,
+        },
         source={
             "origin": origin,
             "clip_seconds": round(info.seconds, 2),
@@ -578,6 +583,8 @@ def build_parser() -> argparse.ArgumentParser:
     register.add_argument("--style", default="", help="baseline style instruction stored with the voice")
     register.add_argument("--engine", default="voxcpm2", help="backend that should consume this asset")
     register.add_argument("--origin", default="", help="provenance note, e.g. 'gemini-3.8-flash-tts voice_nnvw5qprqmz7'")
+    register.add_argument("--cfg", dest="cfg_value", type=float, default=DEFAULT_CFG, help="settled guidance value for this voice")
+    register.add_argument("--timesteps", dest="inference_timesteps", type=int, default=DEFAULT_TIMESTEPS)
     register.add_argument("--force", action="store_true", help="replace an existing voice with the same key")
 
     list_cmd = subparsers.add_parser("list", help="inspect a batch, or the frozen voices when --from is omitted")
@@ -603,6 +610,8 @@ def main(argv: Sequence[str] | None = None) -> int:
             style=args.style,
             engine=args.engine,
             origin=args.origin,
+            cfg_value=args.cfg_value,
+            inference_timesteps=args.inference_timesteps,
             force=args.force,
         )
         return 0
