@@ -180,5 +180,21 @@ class ManifestTests(unittest.TestCase):
             casting.pick_candidate(self.batch, "9", "sandro_v1")
 
 
+class AudioWriteTests(unittest.TestCase):
+    def test_wav_is_published_atomically_from_a_tmp_sibling(self):
+        """Regression: soundfile cannot infer the container from a `.wav.tmp` name."""
+        import soundfile as sf
+
+        with tempfile.TemporaryDirectory() as tmp:
+            target = Path(tmp) / "cand_0001.wav"
+            samples = [0.0, 0.25, -0.25, 0.5]
+            casting.write_wav_atomic(target, samples, 48000)
+            self.assertTrue(target.is_file())
+            self.assertFalse((Path(tmp) / "cand_0001.wav.tmp").exists())
+            data, rate = sf.read(str(target))
+        self.assertEqual(rate, 48000)
+        self.assertEqual(len(data), len(samples))
+
+
 if __name__ == "__main__":
     unittest.main()

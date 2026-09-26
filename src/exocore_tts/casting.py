@@ -247,9 +247,21 @@ def _load_model(model_id: str = MODEL_ID, device: str | None = None):
     return model, sample_rate
 
 
+def write_wav_atomic(target: Path, samples, sample_rate: int) -> None:
+    """Write a WAV through a `.tmp` sibling and publish it atomically.
+
+    The container is passed explicitly: the temporary name ends in `.wav.tmp`, which soundfile
+    cannot use to infer a format from.
+    """
+    import soundfile as sf
+
+    tmp = target.with_name(target.name + ".tmp")
+    sf.write(str(tmp), samples, sample_rate, format="WAV")
+    os.replace(tmp, target)
+
+
 def _synthesize(model, spec: CandidateSpec, *, sample_rate: int, target: Path) -> dict:
     """Synthesize one candidate to `target`; returns the measured facts."""
-    import soundfile as sf
     import torch
 
     torch.manual_seed(spec.seed)
@@ -274,9 +286,7 @@ def _synthesize(model, spec: CandidateSpec, *, sample_rate: int, target: Path) -
         wav = model.generate(**kwargs)
     infer_s = time.perf_counter() - started
 
-    tmp_target = target.with_name(target.name + ".tmp")
-    sf.write(str(tmp_target), wav, sample_rate)
-    os.replace(tmp_target, target)
+    write_wav_atomic(target, wav, sample_rate)
 
     audio_s = round(len(wav) / sample_rate, 3)
     peak_mb = round(torch.cuda.max_memory_allocated() / (1024 ** 2), 1) if torch.cuda.is_available() else 0.0
