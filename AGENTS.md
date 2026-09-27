@@ -32,6 +32,6 @@ Python 源码统一使用 ASCII 双引号；文本基线见 `.gitattributes` / `
 ## Milestones
 
 - **M1（已完成）**：仓库骨架 + 声音资产库（`src/exocore_tts/voices.py`）+ 选角台（`src/exocore_tts/casting.py`、`tools/cast.py`）。
-- **M2**：`POST /tts` + `GET /health` 守护进程；`backends/` 下先有 `fake`（契约测试用）再有 `voxcpm2`（真推理）。开工前必须先裁决模型常驻/空闲卸载策略。
+- **M2（部分落地，等待独立验收）**：`POST /tts` + `GET /health` 守护进程。已提交：CP-A `668b463`（非 GPU 地基：契约层 / 编排 / 单 worker 生命周期 / 分段 / `fake` 替身 / 启动门禁）与 CP-B `a82f83a`（`voxcpm.py` 共用低层入口 + `voxcpm2` 真推理 + casting 不回归）；非 GPU 测试 151/151。生命周期已裁决并实现：**惰性加载**（启动不加载模型）、**空闲卸载默认 1800 s**（`EXOCORE_TTS_IDLE_UNLOAD_SECONDS`，`0` 禁用，可配置）。剩余：delivery 人耳探针、`voices.py` 旧 Django 镜像说明、真机冒烟（en/de、多段、idle 卸载、load 失败）；证据见 `Plan/0003_checkpoint_A_acceptance.md` / `Plan/0003_checkpoint_B_acceptance.md`。
 - **M3**：ExoCore 适配器改 key-based + `base_url` 配置化（跨仓，计划落 `ExoCore/Plan/`）。
 - **M4**：工具侧 `send_voice_msg` 与前端接线。

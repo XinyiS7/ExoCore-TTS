@@ -5,7 +5,7 @@ ExoCore 只认**一个** TTS 端口，这个仓库就是端口的那一侧。本
 ```text
 ExoCore (Django)                        本仓库 = 声音工厂
   │                                      │
-  ├── POST /tts {text, voice_key, ...} ─►├── backend: voxcpm2   本地 3060 Ti
+  ├── POST /tts {text, voice_key, delivery?} ─►├── backend: voxcpm2   本地 3060 Ti
   │                                      ├── backend: cloud    （以后加，互不影响）
   ◄── 200 audio/wav（原始字节）───────────┤
 ```
@@ -13,37 +13,55 @@ ExoCore (Django)                        本仓库 = 声音工厂
 ## 不变量
 
 1. **Django 只给 `voice_key`，永远不给宿主机路径。** 声音长什么样、参考音频放哪、用哪个引擎，都是这一侧的内部事务。换成云端时这条是关键——云端根本没有你本地的文件。
-2. **响应保持 `audio/wav` 原始字节**（不是 JSON+URL）。ExoCore 现有适配器已经是按裸 WAV 解析的，契约这样定，接线时只改请求、不动响应解析。
+2. **响应保持 `audio/wav` 原始字节**（不是 JSON+URL）。ExoCore 现有适配器已按裸 WAV + WAV 头解析，所以 M3 只改请求字段与错误映射（`503` 语义、无 `model_not_ready`），不动成功响应的解析。
 3. **声音资产归本仓所有**：`voices/<key>/reference.wav` + `voice.json`。ExoCore 侧只保存"选了哪个 key"和展示名。
 4. **绝不 import Django / 不碰 ExoCore 的数据库。** 两个进程通过 loopback HTTP 说话。
 5. **重型依赖不出本仓**：torch / voxcpm 只活在 `voxcpm_runtime` 这个 conda 环境里，永远不进 `ExoCore/requirements.txt`。
 
-## 端口契约（M2 实现，先冻结形状）
+## 端口契约（M2 冻结形状）
 
-**`POST /tts`**
+> **权威全文是 `Plan/0003_tts_daemon.md` §2**。本节只是同一形状的精简摘要；两处若冲突，以计划为准并立即修正本节——不允许存在第二个版本。
+
+**`POST /tts`** — 只接受以下三个字段，未声明字段一律 `422`：
 
 ```json
 {
   "text": "已经投影好的朗读文本（不含 *动作描述*）",
   "voice_key": "sandro_v1",
-  "style": "",                                        // 可选，基底风格描述
-  "defaults": {"cfg_value": 2.0, "inference_timesteps": 10, "seed": null},
-  "format": "wav"
+  "delivery": "可选：本次自然语言表演意图；普通朗读省略"
 }
 ```
 
-- 成功：`200`，正文是裸 `audio/wav` 字节。
-- 声音不存在：`404 {"error": "voice_unknown", "voice_key": "..."}`。
-- 服务在跑但模型没就绪（冷启动中）：`503 {"error": "model_not_ready", "state": "loading"}`。
-- 简单到无聊是故意的：越薄的契约越换得动后端。
+- `text`：去首尾空白后非空，且不超过 `EXOCORE_TTS_MAX_TEXT_CHARS`（默认 **600**；调用方也要预检，不要静默截断）。
+- `delivery`：空白等价于未提供，上限 **500** 字符；它是表演意图，**不是**基底风格覆盖，也不得承载 cfg / timesteps / seed / 引擎或 provider 标识。
+- 旧草案的 `style` / `defaults` / `seed` / `verify` / `format` **不是端口字段**（选角 CLI 的 `--style` 是资产制作参数，与端口无关）。ExoCore 侧产品面可以另叫（例如 `send_voice_msg` 的 `emotion`），但必须映射到 `delivery`；wire 上只有这一个名字。
+- `delivery` 只接受字符串：显式 `null` 是类型错误（`422`）；判定顺序为字段（422）→ 资产存在性（404）→ 资产可用性（503）→ `delivery` 能力（422）。
+- 成功：`200`，`Content-Type: audio/wav`，正文是裸 WAV 字节。**不提供** RTF / 设备 / 分段数之类的稳定响应头（它们只进 daemon 日志）；采样率、位深、声道由工厂决定，调用方不得依赖具体取值。
+- 错误体恒定单字段 `{"error": "<code>"}`（没有 `detail`）：
 
-**`GET /health`**
+| HTTP | `error` | 条件 |
+|---|---|---|
+| 401 | `unauthorized` | 配置了 token 而 bearer 缺失/不匹配 |
+| 404 | `unknown_voice` | key 格式合法但没有**该声音资产**（资产目录 / manifest 缺失） |
+| 422 | `invalid_request` | 空文本、超限、未知字段或类型错误 |
+| 422 | `delivery_unsupported` | 目标后端无法安全实现非空 `delivery` |
+| 503 | `engine_unavailable` | **资产存在但不可用**（manifest 不可读、reference 缺失/坏/空、generation 参数非法）、后端未实现、模型加载失败、依赖/设备不可用 |
+| 500 | `synthesis_failed` | 已进入合成但没产出有效音频 |
+
+**`GET /health`** — 成功时固定 `200`，只有两个字段（配置 token 时凭据错误仍是 `401 {"error": "unauthorized"}`）：
 
 ```json
-{"status": "ok", "engine": "voxcpm2", "model_state": "cold", "voice_count": 1}
+{"status": "ok", "state": "cold"}
 ```
 
-`model_state` ∈ `cold | loading | ready`。ExoCore 用它区分"服务没开"和"在加载模型"——这两种情况对用户是不同的话（"语音服务暂时不可用" vs "语音服务正在启动"）。
+`state` ∈ `cold | loading | ready`。配置 token 时，健康端点用同一 bearer 校验。本里程碑**不提供** `GET /voices`（无运行时消费者；运维用 `cast.py list --voices`）。**进程模型：只支持单进程 / 单 Uvicorn worker**——禁止用多 worker 复制模型（单卡串行与显存前提）。
+
+**冷启动与「在线」的判定（产品裁决：warming ≠ offline）**
+
+- 第一个冷请求**会等待**模型加载完成后直接返回音频；不存在 `503 model_not_ready`，也不需要轮询重试协议（CP-B 真机实测：加载 **53.56 s**、首个请求总耗时 **73.88 s**）。
+- ExoCore 区分两种状态只能靠：`/health` 是否可达（`cold` / `loading` = 服务在线、模型尚未就绪 → 如实显示「声音正在加载」）＋ 自己那次 POST 是否仍在途。
+- **只有** `/health` 不可达（连接被拒 / 超时 / 无响应）或 POST 失败于传输层，才是「服务离线」（「TTS 服务暂时不可用」）。**把加载中说成离线是契约禁止的**；反过来，`503 engine_unavailable` 表示真的不可用，永远不用来表示「正在加载」。
+- 调用方 transport timeout 必须覆盖冷加载 + 该请求最坏渲染时间：**M3 按 ≥ 90 s 设计**（CP-B 实测冷请求 73.88 s）。超时后不得自动重试（GPU 工作仍在排队，重复请求只会占满单卡队列）。
 
 ## 声音资产
 
@@ -64,7 +82,7 @@ voices/sandro_v1/
 
 三条都由云端声线 `voice_nnvw5qprqmz7`（display_name `Ale`，prompted 型，2027-09-26 到期）加 Alicia 的原始风格指令渲染，再用本仓的 ultimate cloning（参考 + 逐字稿）复现。英德两条已由 Alicia 听判通过；中文那条的参考文案换成角色真实口吻后才成立（见下方实测经验）。
 
-`voice.json` 与 ExoCore 的 `VoiceProfile` 一一对应：`name ← key`、`engine`、`baseline_instruction`、`generation_defaults`。`prompt_text` 是被朗读的那句原文，做 ultimate cloning（参考音频 + 逐字稿）时要用。
+`voice.json` 是**本仓的资产真相**：`engine` / `baseline_instruction` / `generation_defaults` 全属工厂，端口上不出现。ExoCore 侧只需要 `voice_key`（外加展示名）；它的 `VoiceProfile.engine` 等旧列不再是对齐权威，M3 起停止按它们推导行为（不做破坏性删列）。`prompt_text` 是被朗读的那句原文，做 ultimate cloning（参考音频 + 逐字稿）时要用。
 
 参考音频不一定来自本仓的候选池——云端渲染、手工剪的片段都行，用 `register` 收进来（`pick` 只能收本批候选）：
 
@@ -98,21 +116,21 @@ API key 只在调用时从 `GEMINI_API_KEY` 或 `ExoCore/.env` 现取：**不进
 |---|---|---|
 | **M1** | 仓库骨架 + 声音资产库 + 选角台（本文件描述的工具） | ✅ 已落地 |
 | **M1.5** | `register` 子命令（收外部参考音频）+ 资产体检 + 首条正式声线 `sandro_v1` | ✅ 已落地 |
-| **M2** | `POST /tts` + `GET /health` 守护进程（`backends/fake` 用于契约测试 + `backends/voxcpm2` 真推理；按需加载、空闲卸载） | 待施工 |
+| **M2** | `POST /tts` + `GET /health` 守护进程（`backends/fake` 用于契约测试 + `backends/voxcpm2` 真推理；按需加载、空闲卸载） | **部分落地，等待独立验收**：CP-A `668b463`（非 GPU 地基）+ CP-B `a82f83a`（真实 Vox 路径），非 GPU 测试 151/151；剩余 delivery 人耳探针、`voices.py` 文档收尾、真机冒烟 §9.2 步骤 4–8 |
 | **M3** | ExoCore 适配器改 key-based + `base_url` 配置化 + 区分「冷启动中」与「服务离线」（跨仓计划落 `ExoCore/Plan/`） | 待施工 |
 | **M4** | 工具侧 `send_voice_msg`（落库即开始合成）+ 前端独立语音条 | 待施工 |
 
 ## 已裁决口径（Alicia，2026-09-26）
 
 1. **模型不常驻。** 守护进程启动时不加载模型；第一条合成请求才加载。使用频率低，显存优先让给其它用途。冷启动由用户承担（她明确接受）。
-2. **前端诚实显示「声音加载中」。** 冷启动与合成期间不许伪造进度，也不许把这种情况说成「服务离线」——这两件事对用户是不同的话。意味着 M3 需要一个独立于 `runtime_offline` 的状态（例如 `engine_warming` + `retry_after_ms`）。
+2. **前端诚实显示「声音加载中」。** 冷启动与合成期间不许伪造进度，也不许把这种情况说成「服务离线」——这两件事对用户是不同的话。M3 侧需要一个独立于「服务离线」的 warming 状态；本仓给出的判定依据是 `/health.state ∈ {cold, loading}` ＋「自己那次 POST 仍在途」，不需要 `model_not_ready` 重试协议（见端口契约小节）。
 3. **触发时机分两种：**
    - 用户点按钮朗读全文 → **惰性**（点击才合成，接受冷启动）；
    - agent 主动 `send_voice_msg` → **落库时即开始合成**（不等用户点击，前端只是如实展示状态）。
 4. **`send_voice_msg` 的 UI 形态 = 独立语音条**（消息上第二个播放器，与正文朗读并存）。UI 要重新设计，但底层先做（M4）。
 5. **免冻结的声音资产进 git**（`voices/` 不 ignore）；候选池 `candidates/` 不进。
 
-M2 开工前仍需注意：**冷启动耗时必须实测**后回填上面的口径（ExoCore 侧现有 10 秒超时 + 60 秒假死阈值对冷启动 + 长文本不够用，属于 M3 的契约变更），以及**空闲卸载阈值**（建议默认 30 分钟，设 0 表示不卸载）尚待确认。
+M2 当前状态：CP-A `668b463` + CP-B `a82f83a` 已提交、等待独立验收；**冷加载实测 53.56 s、首个冷请求 73.88 s**（见「环境」），M3 timeout 预算 ≥ 90 s；**空闲卸载默认 `EXOCORE_TTS_IDLE_UNLOAD_SECONDS=1800`**（`0` 表示不卸载；该默认值由 M2 计划裁定，最终仍待 Alicia 确认；真机 idle 卸载属待收口的冒烟）。ExoCore 侧现有 10 秒超时 + 60 秒假死阈值对冷启动与长文本都不够用，属于 M3 必须一起改的契约变更。
 
 ## 环境
 
@@ -127,7 +145,7 @@ E:/Miniconda3/envs/voxcpm_runtime/python.exe -m unittest discover -s tests -v
 
 - 环境：`voxcpm_runtime`（Python 3.10 + torch 2.5.1+cu121 + voxcpm 2.0.3）
 - 权重：`~/.cache/huggingface/hub/models--openbmb--VoxCPM2`（4.7GB，已下载）
-- **冷启动实测 ≈ 42 秒**（权重已在本地缓存、含 torch.compile）——这就是前端「声音加载中」要覆盖的时长。
+- **冷启动实测**：daemon 加载 **53.56 s**、首个冷请求总耗时 **73.88 s**（CP-B 真机，含 HuggingFace 缓存校验与库内 warmup）——这就是前端「声音加载中」要覆盖的时长，M3 timeout 预算 ≥ 90 s。选角 bench 早期记录的 ≈ 42 s 是过时数据点。
 - **机器前置条件：空闲提交内存（commit）≥ ~8GB。** 加载会一次性把 4.58GB 权重读进提交内存；本机 C 盘页面文件只有 3GB（`Win32_PageFileUsage`），实测 4 次加载中有 2 次死于提交内存不足（`OSError 1455` 或直接 segfault），而且发生点都在 `model.safetensors` 刚被映射时。**建议把页面文件提到 16GB**，否则 M2 的守护进程每次冷启动都在赌运气。
 - 硬件实测（RTX 3060 Ti，可用显存约 6.8GB）：短/中/长三档全部通过，RTF ≈ 2.1，长段落峰值 ~6.4GB；64 条选角候选实测峰值 5458MB。
 
