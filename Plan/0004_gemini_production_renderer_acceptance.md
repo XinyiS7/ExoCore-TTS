@@ -96,3 +96,22 @@
 - 授权：+6（总 ≤14）超出既有授权，**需 Alicia 追加同意**（已列入拍板项）。
 
 **Minor（已闭环）**：key 来源并非不一致——按「拥有目标声线的 project」选 key 是刻意设计（replacement 属 ExoCore 项目 → `ExoCore/.env` 的 `GEMINI_API_KEY`；'Ale 2.5 2' 属 TTS 项目 → `ExoCore-TTS/.env` 的 `GEM_TTS_KEY`）；唯一口径与注入方式已由 builder 写入 `Plan/0004_cp_g2_runbook.md`（`58aaecb`，不碰她的 .env）。
+
+## Addendum A3 — job 09 STOPPED 复核与三项裁决（2026-09-28 凌晨）
+
+复核对象：`3e93f08`（基线风格实现）、`71c3af8`（登记步骤）、`ea49843`（job 09 证据）。
+
+**独立核验（只读，零渲染）**：
+- 实现与 A2 裁决逐条一致：`baseline_style` 默认空=旧行为；`style = delivery if delivery else asset.baseline_style`（delivery 逐字、无规范化）；两者皆空不发 style（与 CP-G1 一致）；登记工具显式前缀、无隐式魔法。
+- 登记内容核验：`voices/sandro_gemini_v1/voice.json` 的 `baseline_style` 与 `("Style: " + tools/cloud/prompts/ale.txt).strip()` **逐字相等（1266 字符）**。
+- 测试：全量非网络 **193/193 OK**。
+- job 09 证据：单次 POST /tts、provider 404 NOT_FOUND → `500 synthesis_failed`、无重试、无 key 泄漏；confound（style 内容与正文同变）如实标注。
+
+**裁决 A（剩余预算）= 选项 (a)**：先行 job 10（中文 + 基线：既隔离 confound 又拿下中文样本），随后 en/de/it/mixed（4 条）；共 5 次，用满至 **14/14**，无新增授权。job 10 若仍 404 → **全停**（text 依赖怀疑，未证实前不发任何后续）。选项 (c) 机制探测**否决**：wire 上限 500 < 解析所需 1266 ⇒ 全形态覆盖在冻结契约下结构性不可行，机制探测无法产出可用形态。
+
+**裁决 B（交付形态变更 = baseline-only 语义，G-03 第二次修订）**：
+- 结构性结论：本声线的请求级 style 覆盖不可行（441 字符片段实测 404 + 上限 500 < 1266）。
+- 修正语义：**带 `baseline_style` 的资产**——delivery 为空 → 发送基线（已实现）；**delivery 非空 → 确定性拒绝**（复用既有 `delivery_unsupported` 422；provider 调用 0 次；不得静默忽略；实现须资产感知、于 provider 前拒绝、禁止 `engine == …` 散落特判）。无基线资产维持 CP-G1 语义（delivery 逐字透传）。
+- 冻结门文字不动：G-03 对本类资产的保留项 = 基线精确发送、style 不进 spoken text、非空 delivery 显式拒绝、身份由资产固定；「覆盖生效」不可交付，记录在案。
+- G-06 修订：听判集 = **5 个样本**（zh/en/de/it/mixed，基线形态）的身份与吐字确认；「style A-B」记为冻结 wire 下结构性不可行；未来如需按句情绪，另设设计（如多资产变体，记为远期选项、不承诺）。
+- 时序：拒绝语义的小改可在矩阵完成后、Gate-G 收口前落地（不影响本轮 5 次渲染）；落地时补测（带基线资产 + delivery → 422、provider 0 次）。
