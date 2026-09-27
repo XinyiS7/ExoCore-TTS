@@ -57,12 +57,11 @@ def post(text: str, delivery: str):
 def run():
     style = b_leg_style()
     b_leg = ("09_zh_Bleg_delivery", ZH, style)
+    # A4 round (Addendum A4): Latin languages only; the Chinese isolation probe is separate.
     baseline_jobs = [
-        ("10_zh_Aleg_baseline", ZH, ""),
         ("11_en_baseline", EN, ""),
         ("12_de_baseline", DE, ""),
         ("13_it_baseline", IT, ""),
-        ("14_mixed_baseline", MIX, ""),
     ]
     jobs = ([b_leg] if "--with-b-leg" in sys.argv else []) + baseline_jobs
     results = []

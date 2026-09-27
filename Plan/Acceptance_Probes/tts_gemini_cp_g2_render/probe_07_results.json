@@ -1,0 +1,22 @@
+{
+  "jobs": [
+    {
+      "label": "probe_07_zh_baseline",
+      "delivery_chars": 0,
+      "status": 200,
+      "bytes": 495404,
+      "seconds": 10.32,
+      "sha256": "dd846b103a489287",
+      "wav": "probe_07_zh_baseline.wav"
+    },
+    {
+      "label": "probe_07_zh_short_style",
+      "delivery_chars": 441,
+      "status": 200,
+      "bytes": 341804,
+      "seconds": 7.12,
+      "sha256": "1346fba55a5377d6",
+      "wav": "probe_07_zh_short_style.wav"
+    }
+  ]
+}

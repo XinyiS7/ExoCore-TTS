@@ -118,3 +118,32 @@ name 放进 voice= 槽            : 400（invalid argument）
 - **待批的 4 次分配**（任一失败即停）：`en`(daemon) → `de` → `it`；第 4 次用 direct-call + 中文做
   CJK 假设的确认。注意：**mixed 句与 zh 样本都含中文** —— 若 CJK 假设成立，二者当前不可用，需专门
   探测/裁决后再定。
+
+## 9. 更正轮（probe #7）——真相与本证据的修正（2026-09-28 00:00）
+
+**Builder 失误（已修）**：此前所有"daemon 路径"的渲染，key 注入是**空字符串**（shell 提取被引号吃掉），
+`read_api_key()` 因此**静默回退**到 `ExoCore/.env` 的**旧 key（另一个 project）** → 每次请求都返回
+404 "voice was not found / no permission"。**§7/§8 的"中文被拒""必须整段设计文本才能解析"两个结论
+由此失效**（它们是错 key 的产物，不是声线行为）。
+
+**更正后的两枪**（key 注入先验证长度 = 53，再用**免费** `voices.get` 门禁证明"这把 key 看得见该声线"，
+然后才花钱；daemon 路径；预算 13–14）：
+
+| 实验 | 结果 |
+|---|---|
+| `probe_07_zh_baseline`：中文 + 资产基线（1266 字符） | ✅ 200，495,404 B / 10.32 s |
+| `probe_07_zh_short_style`：中文 + **调用方短风格（441 字符，`"Style: "` 前缀）** | ✅ 200，341,804 B / 7.12 s |
+
+**更正后的结论**：
+1. **短风格串可用**（441 ≤ 500 的 wire 上限）⇒ **每请求风格覆盖在现有契约下可行**；
+   Addendum A3 的「baseline-only / 非空 delivery → 422」裁决**前提失效**，应回退到 A2 语义
+   （基线默认 + delivery 逐字覆盖）。该小改**尚未实现**，无需回滚代码。
+2. **中文可用**；CJK 假设作废。
+3. **daemon 路径与直接调用等价**（差异只来自 key）。
+4. 免费门禁（`voices.get` + key 长度断言）已写入 `keyenv.py` 与 runbook，防止同类失误复发。
+
+**预算：14/14 用尽。** 剩余语言矩阵（en/de/it/mixed = 4 次）需追加授权。
+
+**给 Alicia 的听判材料**（同题同文本，daemon 路径）：
+`probe_07_zh_baseline.wav`（10.32 s）vs `probe_07_zh_short_style.wav`（7.12 s）——判：同一人？表演有无差异？
+指令有无被念出？

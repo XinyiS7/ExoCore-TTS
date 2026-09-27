@@ -86,3 +86,17 @@ preflight，且第 10 次渲染（zh 基线）会再次验证基线路径；重�
   与 probe #5 逐项相同，**唯一差异 = 正文**（Latin vs 中文）。
 - 待批的 4 次分配：`en`(daemon、基线) → `de` → `it`；第 4 次 direct-call + 中文（确认 CJK 假设）。
 - **mixed 句与 zh 样本都含中文**：若 CJK 假设成立，二者在本轮不可用（记为受限项，等专门探测/裁决）。
+
+## 8. Key 注入陷阱（2026-09-28，代价 3 次无效渲染 + 两个错误结论）
+
+**症状**：daemon 路径的每次渲染都 404 "voice was not found or no permission"，而直接调用（读文件取 key）成功。
+
+**根因**：`export GEMINI_API_KEY="$(sed …)"` 曾产出**空串**（shell 引号/转义问题），而
+`read_api_key()` 环境变量为空时会**静默回退**到 `EXOCORE_TTS_DOTENV`（默认 `ExoCore/.env` 的**旧 key**，
+属于另一个 project）→ 请求以错误的 project 身份发出 → 声线自然"不存在"。
+
+**强制门禁（此后所有云端跑批必须先过）**：
+1. 用 `keyenv.py` 提取（Python 解析，不碰 shell 引号）：`export GEMINI_API_KEY="$(python …/keyenv.py)"`；
+2. **断言非空**并回显长度（`${#GEMINI_API_KEY}` 必须 > 0；daemon 侧 probe 里再打印一次长度）；
+3. 花钱前先过**免费** `voices.get(<asset 的 provider id>)` 门禁——证明"当前 key 能看见该声线"；
+4. 失败即停：404 not-found 类错误先按"key/project 不匹配"排查，不要先怀疑声线或语言。

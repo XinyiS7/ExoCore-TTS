@@ -2,8 +2,8 @@
   "b_leg_style_len": 441,
   "jobs": [
     {
-      "label": "11_en_baseline",
-      "chars": 64,
+      "label": "10_zh_Aleg_baseline",
+      "chars": 19,
       "delivery_chars": 0,
       "delivery": null,
       "status": 500,
