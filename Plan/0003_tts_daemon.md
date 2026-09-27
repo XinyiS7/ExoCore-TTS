@@ -4,7 +4,7 @@
 > **范围**：仅 `ExoCore-TTS` 仓库。
 > **计划作者**：gpt-5.6-sol / Solaire
 > **Pruning review**：deepseek/deepseek-flash / Ecki
-> **依据**：已先读 `0003_review_handoff_solaire.md`，再把旧版 `0003_tts_daemon.md` 仅作为事实库；本计划依据当前源码、声音资产与既有测试独立重建。
+> **依据**：已先读 `Archived/0003_review_handoff_solaire.md`（已归档），再把旧版 `0003_tts_daemon.md` 仅作为事实库；本计划依据当前源码、声音资产与既有测试独立重建。
 > **基线**：CP-B 时点非 GPU 测试 **151/151 OK**（65 个 casting/voices/verify 基线 + 86 新增，连跑 3 次稳定，不加载模型、不联网）；Amendment 01 后为 **159/159**（已由 `f9be708` 独立复现）。三条正式声音资产均为 `voxcpm2`，生成默认值为 cfg 3.5 / timesteps 16。
 
 ## 1. 目标与验收边界
