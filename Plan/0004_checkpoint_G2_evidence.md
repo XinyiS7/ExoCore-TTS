@@ -19,7 +19,13 @@
 剩余 2。语言矩阵 5 + A-B「有风格」1 = 需要 6 → 继续必须重新授权（首轮预算本来就崩在验证阶段）。
 **0 登记、0 fallback、0 create/delete、0 语料消耗**（所有失败调用念的都是 "Preflight."）。
 
+**探针 #1–#3 原始日志**（本目录）：`probe_01_oldkey_name.log`、`probe_02_rightkey_id.log`、
+`probe_03_rightkey_name.log`（命令、key 来源、渲染计数、原始返回逐字）。
+
 ## 2. 三种引用形式的原始返回（同一个 key、同一个 project）
+
+（逐字日志见本目录 `probe_02_rightkey_id.log` / `probe_03_rightkey_name.log` / `experiment_A.log`；
+#1 的旧 key 尝试见 `probe_01_oldkey_name.log`。）
 
 ```text
 id  → voice=voice_oj0e4iyst73a      : 404 NOT_FOUND  The voice was not found or the caller

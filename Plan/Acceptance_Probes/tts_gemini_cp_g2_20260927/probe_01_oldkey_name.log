@@ -1,0 +1,18 @@
+# CP-G2 probe #1 — preflight（2026-09-27 晚）
+#
+# 目的：按 Plan §0.2 rule 3，用「当前 key + 原始引用」做一次受控 render，正面证明可访问。
+# 命令：
+#   E:/Miniconda3/envs/voxcpm_runtime/python.exe tools/register_cloud_voice.py \
+#       --key sandro_gemini_v1 --kind name --value "Ale 2.5 2" --preflight
+#
+# key 来源（事后查明）：当时走默认 dotenv_path = 兄弟仓 ExoCore/.env 的 GEMINI_API_KEY，
+# 即「旧 key」；Alicia 的新 key 实际在 ExoCore-TTS/.env，变量名为 GEM_TTS_KEY（本仓工具/daemon
+# 不认这个名字）。因此本探针是在**另一个 project** 下做的名字解析尝试。
+#
+# 渲染计数：1/8
+
+Direct use of automatic function calling (AFC) in Models.generate_content_stream is not recommended. Instead, we recommend to use AFC in Chat.send_message_stream. Similarly, direct use of AFC in Models.generate_content is not recommended. Instead, we recommend to use AFC in Chat.send_message.
+FAIL preflight: ClientError: 400 INVALID_ARGUMENT. {'error': {'code': 400, 'message': 'No matching speaker voice found for name: Ale 2.5 2 and language: ', 'status': 'INVALID_ARGUMENT'}}
+exit=1
+
+# 结果：preflight 失败即中止，未登记任何资产（voices/sandro_gemini_v1/ 不存在）。

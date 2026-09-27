@@ -1,0 +1,21 @@
+# CP-G2 probe #2 — preflight，正确 key + resource id（2026-09-27 晚）
+#
+# 目的：Plan §0.2 rule 3 的标准形式——用 Alicia 那把 key（拥有 'Ale 2.5 2' 的 project）
+#       加该声线的 resource id 做受控 render。
+# 命令（key 只经环境变量传递，命令行里不出现 key 值）：
+#   KEY=$(sed -n 's/^GEM_TTS_KEY=//p' .env | head -1 | tr -d '\r"' | tr -d "'")
+#   export GEMINI_API_KEY="$KEY"
+#   E:/Miniconda3/envs/voxcpm_runtime/python.exe tools/register_cloud_voice.py \
+#       --key sandro_gemini_v1 --kind id --value voice_oj0e4iyst73a --preflight
+#
+# 引用来源：voices.list() 只读清点，23 条自定义声线中 display_name == "Ale 2.5 2" 唯一匹配 →
+#           voice_oj0e4iyst73a。
+#
+# 渲染计数：2/8
+
+Direct use of automatic function calling (AFC) in Models.generate_content_stream is not recommended. Instead, we recommend to use AFC in Chat.send_message_stream. Similarly, direct use of AFC in Models.generate_content is not recommended. Instead, we recommend to use AFC in Chat.send_message.
+FAIL preflight: ClientError: 404 NOT_FOUND. {'error': {'code': 404, 'message': 'The voice was not found or the caller does not have permission to access it.', 'status': 'NOT_FOUND'}}
+exit=1
+
+# 结果：未登记。对照事实（同一 key、只读）：voices.get("voice_oj0e4iyst73a") 成功返回
+#       display_name='Ale 2.5 2'、type='prompted' —— 即 get/list 可见但 synthesis 404。

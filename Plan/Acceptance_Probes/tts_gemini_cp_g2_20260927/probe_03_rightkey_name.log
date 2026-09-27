@@ -1,0 +1,18 @@
+# CP-G2 probe #3 — preflight，正确 key + AI Studio 模板的名字形式（2026-09-27 晚）
+#
+# 目的：严格复刻 ai_studio_code.py 导出的引用形式（prebuilt_voice_config(voice_name=...)），
+#       在拥有该声线的 project 里验证「名字」是否可解析。
+# 命令（key 只经环境变量传递）：
+#   KEY=$(sed -n 's/^GEM_TTS_KEY=//p' .env | head -1 | tr -d '\r"' | tr -d "'")
+#   export GEMINI_API_KEY="$KEY"
+#   E:/Miniconda3/envs/voxcpm_runtime/python.exe tools/register_cloud_voice.py \
+#       --key sandro_gemini_v1 --kind name --value "Ale 2.5 2" --preflight
+#
+# 渲染计数：3/8
+
+Direct use of automatic function calling (AFC) in Models.generate_content_stream is not recommended. Instead, we recommend to use AFC in Chat.send_message_stream. Similarly, direct use of AFC in Models.generate_content is not recommended. Instead, we recommend to use AFC in Chat.send_message.
+FAIL preflight: ClientError: 400 INVALID_ARGUMENT. {'error': {'code': 400, 'message': 'No matching speaker voice found for name: Ale 2.5 2 and language: ', 'status': 'INVALID_ARGUMENT'}}
+exit=1
+
+# 结果：未登记。结论：即使在该声线所属 project 内，prebuilt 槽的名字查找也不命中自定义声线
+#       （该槽位只解析官方预置声线目录）——AI Studio 导出的名字形式不是 API 可用引用。

@@ -45,8 +45,9 @@
 
 ## 3. 验证事实（全部离线，无网络、无 key、无 GPU 加载）
 
-- **全量非网络测试：185/185 OK**（基线 160 → +25；命令
-  `E:/Miniconda3/envs/voxcpm_runtime/python.exe -m unittest discover -s tests`，2.7s）。
+- **全量非网络测试：187/187 OK**（基线 160 → +27；命令
+  `E:/Miniconda3/envs/voxcpm_runtime/python.exe -m unittest discover -s tests`，2.7s；独立复跑一致，
+  见 `Plan/0004_gemini_production_renderer_acceptance.md` §2。曾一度误记为 185，已按验收提示更正）。
 - 测试覆盖（对 Plan §5 的离线部分）：
   - 真 `/tts` entry path + 注入的离线 client → 200 `audio/wav`，`delivery` 原样进 style、不进行文；
     `id`/`name` 两 kind 只落对应槽位（G-03/G-05 离线部分）；
