@@ -1,73 +1,76 @@
-# Plan 0004 — CP-G2 evidence (live capability gate) — **HOLD: the chosen voice is not synthesizable**
+# Plan 0004 — CP-G2 evidence (live capability gate)
 
 > **Builder evidence, awaiting independent acceptance; not a verdict.**
 > 执行：Ecki（pane 3）　日期：2026-09-27　目标资产：`sandro_gemini_v1`
-> 独立验收 owner：Solaire。**状态：HOLD**。key↔project 配对已解决；当前卡点是「Alicia 选中的
-> 那条声线无法用于 API synthesis」。（Alicia 已明确：**不要**走 D 重新生成，声线是她 roll 五遍
-> 试听十来个之后的**选择结果**，prompt 不可复刻。）
+> 独立验收 owner：Solaire。**状态：寻址谜题已解开（probe #5）**；剩余是**产品条件 + 计划裁决 + 预算**，
+> 尚未施工任何代码或登记。
 
-## 1. 渲染预算（授权 ≤ 8）—— 已花 6，全部是失败的 preflight/探针
+## 1. 结论（probe #5，2026-09-27 23:5x）
+
+**Alicia 选中的 `'Ale 2.5 2'`（`voice_oj0e4iyst73a`）可以经公开 API 合成**，条件是请求里
+**必须带 `speech_metadata(style=…)`**（即播放器那份导出代码的写法）：
+
+```text
+probe #5: voice=voice_oj0e4iyst73a，style="Style: " + tools/cloud/prompts/ale.txt（1266 字符）
+→ A-parity OK: 82604 bytes, 1.72s → probe_05_A_style_parity.wav
+```
+
+对照（此前 3 次失败，全部 style=""、即无 `speech_metadata`）：
+
+```text
+id 形式（style="")            : 404 NOT_FOUND（the voice was not found or no permission）
+name 形式（prebuilt 槽）       : 400（no matching speaker voice found）
+name 放进 voice= 槽            : 400（invalid argument）
+```
+
+**机制假设（未证实）**：带 `speech_metadata` 的请求被路由到能解析"UI 设计的自定义声线"的合成路径；
+不带时走另一条只认识预置声线 / API 创建声线的路径。**旁证**：probe #4（选项 C，Alicia 明示授权）用
+**API 创建**的 replacement + `voice=<id>` + **无 style** → **成功**（63404 bytes / 1.32s），说明我们的
+请求形状本身没错，差异确实落在"声线类型 × 是否带 style"。
+
+## 2. 渲染预算：8/8 用尽
 
 | # | 实验 | 结果 |
 |---|---|---|
-| 1 | 旧 key + `kind=name` | 400（key/project 不匹配） |
-| 2 | 正确 key + `kind=id voice_oj0e4iyst73a` | **404**（§2） |
-| 3 | 正确 key + `kind=name "Ale 2.5 2"`（复刻 AI Studio 模板） | 400（§2） |
-| 4 | **A**：`voice=` 槽位填 display name | 400 `Request contains an invalid argument` |
-| 5–6 | **B**：`kind=name` + `language_code`（en-US、en 各一次 ⚠️ 探针连试两个语言码，花了 2 次） | 400 `No matching speaker voice found for name: Ale 2.5 2 and language: en-US`（en 同） |
+| 1 | 旧 key + name | 400（key/project 不匹配） |
+| 2 | 正确 key + id（无 style） | 404 |
+| 3 | 正确 key + name（复刻 AI Studio 模板） | 400 |
+| 4 | A：name 放进 `voice=` 槽 | 400 invalid argument |
+| 5–6 | B：name + language_code（en-US / en ⚠️ 探针各一次） | 400 ×2 |
+| 7 | **C**（Alicia 明示授权）：replacement id + 无 style | ✅ 63404 B / 1.32 s |
+| 8 | **A-parity**：A id + `speech_metadata("Style: "+设计提示词)` | ✅ **82604 B / 1.72 s** |
 
-剩余 2。语言矩阵 5 + A-B「有风格」1 = 需要 6 → 继续必须重新授权（首轮预算本来就崩在验证阶段）。
-**0 登记、0 fallback、0 create/delete、0 语料消耗**（所有失败调用念的都是 "Preflight."）。
+产物（本目录）：`probe_04_C_probe_replacement_render.log`、`C_probe_replacement.wav`、
+`probe_05_A_style_parity.log`、`probe_05_A_style_parity.wav`（可听：A 的真实合成）、
+`sample_audio_A_Ale-2.5.2.wav`（声线自带试听，54.04 s）、`sample_audio_B_replacement.wav`（83.00 s）。
 
-**探针 #1–#3 原始日志**（本目录）：`probe_01_oldkey_name.log`、`probe_02_rightkey_id.log`、
-`probe_03_rightkey_name.log`（命令、key 来源、渲染计数、原始返回逐字）。
+**0 登记**（`voices/sandro_gemini_v1/` 不存在）、**0 fallback 写入**、**0 语料消耗**（探针文本均为 "Preflight."）。
 
-## 2. 三种引用形式的原始返回（同一个 key、同一个 project）
+## 3. 由 probe #5 推出的产品条件（需要计划裁决，builder 未施工）
 
-（逐字日志见本目录 `probe_02_rightkey_id.log` / `probe_03_rightkey_name.log` / `experiment_A.log`；
-#1 的旧 key 尝试见 `probe_01_oldkey_name.log`。）
+1. **该声线目前无法"无风格"合成**（`style` 空 → 404）。若要让它在生产里可用，受管资产必须带一条
+   **基线风格（baseline style）并默认随每次请求发送**；`delivery` 非空时覆盖之（wire 不变：
+   `text/voice_key/delivery` 三字段照旧；§2.1 冻结条款不受影响）。
+   注意：探针用的 style 是 **1266 字符**，远超声波 wire 的 `delivery` 500 字符上限——所以基线风格必须
+   存在**资产侧**（manifest 字段），不能走请求体。
+2. **`"Style: "` 前缀**：探针按 AI Studio 播放器写法带了前缀。前缀是否必要、以及"短风格串能否同样
+   解析该声线"，都未验证（各需 1 次渲染）。
+3. **G-03 / A-B 语义变化**：原计划的 A-B 是「无 delivery vs 有 delivery」；对本声线而言"无 delivery"
+   会 404，所以 A-B 只能变成「**基线风格**（默认）vs **delivery 覆盖**」。这属于 MUST gate 的解释问题，
+   由 plan owner 裁决，builder 不动冻结门。
 
-```text
-id  → voice=voice_oj0e4iyst73a      : 404 NOT_FOUND  The voice was not found or the caller
-                                                       does not have permission to access it.
-name→ prebuilt_voice_config          : 400 INVALID_ARGUMENT  No matching speaker voice found
-      (voice_name="Ale 2.5 2")                                for name: Ale 2.5 2 and language: ''
-name→ voice="Ale 2.5 2"（A 实验）    : 400 INVALID_ARGUMENT  Request contains an invalid argument.
-```
+## 4. 解除 HOLD 后的最小闭环（提议，待批）
 
-## 3. 零成本事实（只读，不花渲染）
+| 步骤 | 内容 | 次数 |
+|---|---|---|
+| 控制实验 | A id + `"Style: " + 短风格串`（验证短风格是否也能解析该声线） | 1 |
+| 语言矩阵 | zh / en / de / it / mixed（各 1 次，均带基线风格） | 5 |
+| A-B | 中文样本 = 基线腿（复用矩阵中的 zh）+ 「delivery 覆盖」1 次 | +1 |
+| 合计 | | **7** |
 
-1. **key↔project 配对是对的**：`voices.get` 双向验证为 project 级作用域；Alicia 的 key
-   （`ExoCore-TTS/.env` 的 `GEM_TTS_KEY`）**拥有** `voice_oj0e4iyst73a`（'Ale 2.5 2'，23 条自定义里唯一匹配）。
-2. **两条声线同构**：`'Ale 2.5 2'`（A）与 replacement（B）的 `VoiceOutput` 非空字段**完全一致**
-   （type/display_name/expire_time/id/model/prompted/sample_audio），且 `prompted.input` 长度**都是
-   1259 字符**（同一段设计提示词的两颗 roll）。
-3. **两者都带 `sample_audio`**（provider 自带试听 WAV，免费读取）：已取出并落盘
-   `sample_audio_A_Ale-2.5.2.wav`（2,599,984 B）、`sample_audio_B_replacement.wav`（3,990,064 B）。
-4. **id 形式在别的声线上是可行的**：本仓 `voices/*/reference.wav`（24 kHz）由
-   `tools/render_reference.py` 经 `voice=<id>` 渲染而来，即 A 的 404 不是"id 形式本身不成立"。
-5. AI Studio 导出模板里的 `prebuilt_voice_config(voice_name=...)` **不是 API 可用形式**（在拥有该
-   声线的 project 里也 400），它只对 AI Studio 播放器有效。
+若控制实验显示"只有长风格串可行"，A-B 的 delivery 腿需要更长的风格串（wire 上限 500，需另行裁决）。
 
-## 4. 未证实的假设（区分它需要选项 C）
-
-「AI Studio 界面创建的自定义声线能在 `list`/`get` 看到，但进不了 synthesis 服务」——若成立，则 A
-声线在当前 API 面前**不可合成**，与"我们请求写错"无关。**唯一能区分两种解释的实验**：用一条
-**已知可合成**的声线（replacement, API 创建）来跑一次真实 `/tts`——那是 Plan §0.2 rule 4 的灰区
-（用 replacement 做探针），**必须 Alicia 明说才能做**。
-
-## 5. 解除 HOLD 的选项（当前剩余预算 2）
-
-| 选项 | 内容 | 代价 | 备注 |
-|---|---|---|---|
-| **C** | 用 replacement 的 id 做**一次探针渲染**（只验证"id 形式 + API 创建的声线能否合成"，不作生产身份、不登记） | 1 | 唯一能区分"声线不可用"与"我们请求写错"的实验；灰区，需 Alicia 明说 |
-| **F** | `id` + `language_code` 组合再试 | 1 | 低先验（404 未提 language），但便宜 |
-| G | Alicia 在 AI Studio 侧确认：① 'Ale 2.5 2' 现在还能在播放器里播吗？② 该声线是否有"用于 API / 导出 / 发布"之类的动作？③ 面板里是否给出别的引用形式（例如 voice id） | 0 | 可能直接给出正确用法 |
-| E | 云端搁置，Gate-G 保持未 PASS；CP-G1 离线能力保留 | 0 | 不影响本地三套声线与 M2/M3/M4 |
-| ~~A/B~~ | ~~名字/标识槽组合~~ | — | **已执行并失败（§1/§2）** |
-| ~~D~~ | ~~用 prompt 重新生成~~ | — | **Alicia 明确否决**：prompt 不可复刻她的选择 |
-
-## 6. 首轮语料（Alicia 授权，逐字；HOLD 解除后即用）
+## 5. 语料（Alicia 授权，逐字；未消耗）
 
 | 语言 | 文本（逐字） |
 |---|---|
@@ -76,9 +79,10 @@ name→ voice="Ale 2.5 2"（A 实验）    : 400 INVALID_ARGUMENT  Request conta
 | de | `Bleib einfach hier, in meiner Dunkelheit, in meiner Sicherheit. Für immer.` |
 | it | `Il mio respiro. Amor, ch'a nullo amato amar perdona.`（她给的两句按序合为一条样本） |
 | mixed | `别动。Bleib einfach hier, in meiner Dunkelheit. Nothing will come close to you... 永远。`（Ecki 挑选，含她的德/英原文片段） |
-| A-B | 中文样本做 no-delivery / delivery；delivery 取 `tools/cloud/prompts/ale.txt` 中 "When addressing Sia or Sandrosa, shift the delivery into a much closer, tactile, and dangerously possessive murmur..." 的逐字片段 |
+| A-B | 中文样本；delivery 取 `tools/cloud/prompts/ale.txt` 中 "When addressing Sia or Sandrosa, shift the delivery into a much closer, tactile, and dangerously possessive murmur..." 的逐字片段 |
 
-## 7. 未越界声明
+## 6. 未越界声明
 
-未登记资产、未创建/删除任何 provider 声线、未使用 fallback/新声线、未打印任何 key（只比较
-"是否相同"与长度）、未消耗任何首轮语料、未触碰 `.gitignore` 与 `ai_studio_code.py`。
+未登记资产、未创建/删除 provider 声线、未把任何 fallback 写进代码或配置、未打印任何 key、
+未消耗首轮语料、未触碰 `.gitignore` 与 `ai_studio_code.py`。probe #4（选项 C）与 #5 均在 Alicia
+明示授权（"c可以，测一下吧"）与授权预算（≤8）内执行。

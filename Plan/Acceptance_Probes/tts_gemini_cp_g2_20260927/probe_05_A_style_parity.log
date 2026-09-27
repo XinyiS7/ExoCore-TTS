@@ -1,0 +1,3 @@
+Direct use of automatic function calling (AFC) in Models.generate_content_stream is not recommended. Instead, we recommend to use AFC in Chat.send_message_stream. Similarly, direct use of AFC in Models.generate_content is not recommended. Instead, we recommend to use AFC in Chat.send_message.
+probe A-parity: voice=voice_oj0e4iyst73a（Alicia 选中的 'Ale 2.5 2'），style 长度=1266（Style: + 设计提示词）
+A-parity OK: 82604 bytes, 1.72s -> probe_05_A_style_parity.wav
