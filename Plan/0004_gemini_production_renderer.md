@@ -141,7 +141,7 @@ Scope：backend、asset schema/registration、registry、service rendering polic
 
 首次正式 smoke 上限为 **7 次 provider render**。超过上限、失败后批量重跑或改用新声音资源，必须先重新征得 Alicia 同意。
 
-> **Plan owner 裁决（2026-09-27，CP-G1 验收附则）**：固定顺序合计 8 次与「首轮上限 7 次」冲突，裁决为 **A-B 复用中文样本**——步骤 2 的中文样本即步骤 3 的 A 腿（同一短文本、no-delivery），步骤 3 只新增 1 次 delivery 渲染；总计 1(preflight) + 5(语言) + 1(delivery) = **7 次**，在冻结上限内，MUST gates 不变。验收报告见 `Plan/0004_gemini_production_renderer_acceptance.md` §5。**（追加 2026-09-27 晚：实际执行授权为 ≤8，验证探针已用 6 次；解除 HOLD 后成功矩阵仍需 6 次 → 需 Alicia 追加授权；“不需要额外同意”一句据此作废。见验收报告 Addendum A1。）**
+> **Plan owner 裁决（2026-09-27，CP-G1 验收附则）**：固定顺序合计 8 次与「首轮上限 7 次」冲突，裁决为 **A-B 复用中文样本**——步骤 2 的中文样本即步骤 3 的 A 腿（同一短文本、no-delivery），步骤 3 只新增 1 次 delivery 渲染；总计 1(preflight) + 5(语言) + 1(delivery) = **7 次**，在冻结上限内，MUST gates 不变。验收报告见 `Plan/0004_gemini_production_renderer_acceptance.md` §5。**（追加 2026-09-27 晚：实际执行授权为 ≤8，验证探针已用 6 次；解除 HOLD 后成功矩阵仍需 6 次 → 需 Alicia 追加授权；“不需要额外同意”一句据此作废。见验收报告 Addendum A1。）** **（追加 2，2026-09-27 深夜：probe #5 证明本声线带 style 才可合成；裁决——资产侧「基线风格」为 CP-G2 最小前提（wire 不动）；A-B 语义改为「基线默认 vs delivery 覆盖」；预算结构重排为 +6（B 腿先行、总 ≤14），待 Alicia 追加授权。详见验收报告 Addendum A2。）**
 
 ## 4. Expected file scope
 
