@@ -2,8 +2,8 @@
 
 > **Builder evidence, awaiting independent acceptance; not a verdict.**
 > 本文件是**建造方证据**：只陈述可复现的观测事实与命令，**不含任何验收判定**（不写 PASS/FAIL，不代表 CP-A / CP-B / M2 已获验收）。
-> **日期**：2026-09-27　**执行/记录**：Ecki（pane 3）　**授权**：Solaire（经 Alicia 转达；限定"仅此一份 tracked 文档、不碰其它文件、不推送、留工作区待 QC"）
-> **状态**：**未提交**（untracked），等待独立 QC；本轮无推送。
+> **日期**：2026-09-27　**执行/记录**：Ecki（pane 3）　**授权**：Solaire（经 Alicia 转达；限定"仅此一份 tracked 文档、不碰其它文件、不推送"，初版留工作区待 QC）
+> **状态**：已提交 `a345ef0`（单文件提交，未推送）；本文件是建造方证据，不是验收裁决。
 
 ---
 
@@ -189,7 +189,7 @@ cold 启动（无模型/无显存占用）、第一个冷请求等待加载后�
 
 - 变更范围：**仅 docstring**（`+3 / −8`）：删除旧文"Mapping to ExoCore's `VoiceProfile`"的字段镜像说明，改为"manifest 是声音的唯一权威；其它位置的绑定只存 key，不得镜像为第二真相"。
 - 行为影响：无（无代码路径改动）；该提交处全量非 GPU 测试 **151/151 OK**。
-- 未提交/未触碰：本文件之外无其它改动。
+- 该提交之外：本轮无其它代码改动。
 
 ---
 
@@ -233,4 +233,4 @@ python tools/verify_audio.py --clip de.wav --text "Mach das Fenster zu, der Wind
 2. **长句"刺耳"渲染现象**（非注入独有）作为独立质量观察记录在 `Plan/0003_delivery_probe_result.md` §5。
 3. **声音身份听判**（en/de、以及多段长文）属 Alicia 的人耳范围，未计入本文件的数字证据。
 4. 本文件**不声明** CP-A / CP-B / M2 的验收结论；状态行与文档口径由 Solaire / pane 7 处置。
-5. 本文件按授权**未提交**、**未推送**，留工作区供 QC。
+5. 本文件已提交 `a345ef0`、**未推送**；除状态文字外，证据内容自核验后未变更。
