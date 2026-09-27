@@ -53,3 +53,24 @@
 - 合计 **7 次 ≤ 上限**，无需 Alicia 额外同意计数；MUST gates（§5）未动。
 
 （若日后仍需独立的 preflight + 双 A-B 同段对比，需 Alicia 明确同意 8 次。）
+
+## Addendum A1 — CP-G2 HOLD review（2026-09-27 晚）
+
+复核对象：`df85aaa` / `dfc3a94` / `8eae226`（CP-G2 探针与诊断，均未 push）。
+
+**已独立核验的事实**（只读，零渲染）：
+- 两个 audition 样本为有效 WAV：A `sample_audio_A_Ale-2.5.2.wav` 2,599,984 B / 24 kHz / 54.04 s（sha256 e83d3614…）；B `sample_audio_B_replacement.wav` 3,990,064 B / 24 kHz / 83.00 s（6ca3f38c…）。
+- `experiment_A.log` / `experiment_B.log` 与证据 §1/§2 逐字一致（400 INVALID_ARGUMENT ×3，含 en-US / en 两条）；日志无 key 材料。
+- `voices/` 仍只有三套本地资产——**0 登记**属实；`.gitignore` 与 `ai_studio_code.py` 未随这些提交变化。
+
+**验收判定：CP-G2 = HOLD（维持）。** 卡点性质是**外部身份状态**（Alicia 手工 roll 的 'Ale 2.5 2' 经 id/name 三种引用形式均无法进入 API synthesis；key↔project 配对已证明正确），不是仓内施工缺陷；builder 未 fallback、未登记、未消耗语料、未触边界（§7 声明经抽查成立）。**Gate-G 不得声称 PASS。**
+
+**预算对账**：执行授权 ≤8，已用 6（全部为失败探针），余 2；解除 HOLD 后的成功矩阵仍需 6（5 语言 + 1 delivery）。**§5 裁决中「不需要额外同意」一句据此作废**——A-B 复用中文样本的结构仍成立（与 builder §6 计划一致），但总额度必须由 Alicia 重新授权。
+
+**HOLD 解除路径（验收方建议顺序）**：
+1. **G（0 成本，最强先验）**：请 Alicia 在 AI Studio 确认：① 'Ale 2.5 2' 现在仍能播放？② 是否有发布/导出/用于 API 的动作？③ 面板是否给出别的引用形式（id / 句柄）。
+2. **C（1 次，灰色地带，需 Alicia 明说）**：以 replacement 的 id 做一次纯诊断渲染，只区分「该声线类不可用」与「请求形式错误」；不登记、不作生产身份、不是 fallback。
+3. **F（1 次，低先验）**：仅当 G / C 均无结论时才考虑。
+4. **E（0 成本兜底）**：云端搁置，Gate-G 保持未 PASS；CP-G1 离线能力与本地三套资产不受影响。
+
+**Minor（非阻塞）**：① 早期探针 #1–#3 缺原始日志（当前仅 §2 转述），建议补档；② CP-G1 证据文档测试计数 185 → 187 更正（见 §2）。
