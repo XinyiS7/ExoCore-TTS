@@ -103,3 +103,18 @@ name 放进 voice= 槽            : 400（invalid argument）
   即"她以被设计时的语气说多语种台词"。G-03 / A-B 的交付形态据此需要 plan owner 重新落笔（冻结门文字不动）。
 - 已登记资产保持正确：`voices/sandro_gemini_v1/voice.json` 的 `baseline_style` = 1266 字符（与 probe #5 同串）。
 - 产物：`Plan/Acceptance_Probes/tts_gemini_cp_g2_render/{run_matrix.py,render_results.json,daemon.log}`。
+
+## 8. 真机轮 A3（job 10–14）—— job 10 仍失败，按裁决全停（2026-09-27 23:56）
+
+- job10（中文 19 字 + **资产基线** = 与 probe #5 逐字相同的 1266 字符 style，无 delivery）→ provider
+  **404 NOT_FOUND**（同一条 voice 解析失败）→ `500 synthesis_failed`；**后 4 条未发**。
+- **差异核对（逐项）**：key（`GEM_TTS_KEY` 所在 project）、声线 id、style（`manifest.baseline_style ==
+  probe #5 的 style`，已程序化核对为 **True**，1266 字符）、模型、温度、`part` 形状（含
+  `speech_metadata`）——**全部相同**；**唯一差异 = 正文**（probe #5 = `"Preflight."`（Latin）；
+  job10 = 中文 19 字）。
+- ⇒ **声线解析疑似依赖正文语言/脚本**：Latin 通过（1/1），CJK 被拒（1/1）。另有 3 次无 style 的
+  Latin 尝试被拒（404），故更完整的经验式是「**style = 整段设计文本且正文为 Latin** → 可解析」。
+- 预算：**10/14**；daemon 已停、端口释放、显存未动。
+- **待批的 4 次分配**（任一失败即停）：`en`(daemon) → `de` → `it`；第 4 次用 direct-call + 中文做
+  CJK 假设的确认。注意：**mixed 句与 zh 样本都含中文** —— 若 CJK 假设成立，二者当前不可用，需专门
+  探测/裁决后再定。

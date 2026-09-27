@@ -1,8 +1,9 @@
-"""CP-G2 live round (runbook §3): six renders against the running daemon.
+"""CP-G2 live round (runbook §3 / Addendum A3): baseline samples against the running daemon.
 
-Order matters: job 09 is the B leg (short style probe -- proves a short style can resolve the
-voice), job 10 is the A leg (no delivery -> the asset's baseline style), 11-14 are the
-language matrix. The first failure stops the round and writes what happened; nothing retries.
+Job 10 is the isolated confound check (Chinese + the asset baseline: same style string as
+probe #5, different text) and doubles as the Chinese matrix sample; 11-14 are the remaining
+languages. The first failure stops the round and writes what happened; nothing retries.
+The B leg (job 09) ran once and returned 404; pass --with-b-leg to reproduce it.
 """
 import hashlib
 import io
@@ -55,14 +56,15 @@ def post(text: str, delivery: str):
 
 def run():
     style = b_leg_style()
-    jobs = [
-        ("09_zh_Bleg_delivery", ZH, style),
+    b_leg = ("09_zh_Bleg_delivery", ZH, style)
+    baseline_jobs = [
         ("10_zh_Aleg_baseline", ZH, ""),
         ("11_en_baseline", EN, ""),
         ("12_de_baseline", DE, ""),
         ("13_it_baseline", IT, ""),
         ("14_mixed_baseline", MIX, ""),
     ]
+    jobs = ([b_leg] if "--with-b-leg" in sys.argv else []) + baseline_jobs
     results = []
     for label, text, delivery in jobs:
         entry = {

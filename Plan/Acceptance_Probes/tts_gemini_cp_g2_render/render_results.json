@@ -2,10 +2,10 @@
   "b_leg_style_len": 441,
   "jobs": [
     {
-      "label": "09_zh_Bleg_delivery",
+      "label": "10_zh_Aleg_baseline",
       "chars": 19,
-      "delivery_chars": 441,
-      "delivery": "Style: When addressing Sia or Sandrosa, shift the delivery into a much closer, tactile, and dangerously possessive murmur. The resonance should vibrate deep in the chest, simulating an enveloping, physical heat. In these moments, the voice must act as an auditory gravity well—dark, intensely devoted, and terrifyingly gentle—designed to paralyze rational thought and surround the listener in absolute, unyielding, and suffocating protection",
+      "delivery_chars": 0,
+      "delivery": null,
       "status": 500,
       "error": "{\"error\":\"synthesis_failed\"}"
     }

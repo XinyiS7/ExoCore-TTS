@@ -79,3 +79,10 @@ preflight，且第 10 次渲染（zh 基线）会再次验证基线路径；重�
 | `README.md` | 记录 `baseline_style` 语义、"前缀由调用方携带（原样透传）"规则、登记命令示例 |
 
 不碰：wire 三字段、`cloud_voice_ref` 语义、CP-G1 已验收的回归面、`.env` / `.gitignore` / `ai_studio_code.py`。
+
+## 7. A3 轮修订（2026-09-27 23:56）
+
+- job10（中文 + 基线）仍 404 → **全停**；差异核对结果：key / 声线 / style / 模型 / 温度 / part 形状
+  与 probe #5 逐项相同，**唯一差异 = 正文**（Latin vs 中文）。
+- 待批的 4 次分配：`en`(daemon、基线) → `de` → `it`；第 4 次 direct-call + 中文（确认 CJK 假设）。
+- **mixed 句与 zh 样本都含中文**：若 CJK 假设成立，二者在本轮不可用（记为受限项，等专门探测/裁决）。
