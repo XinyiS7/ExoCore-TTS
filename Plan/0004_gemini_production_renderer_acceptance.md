@@ -115,3 +115,19 @@
 - 冻结门文字不动：G-03 对本类资产的保留项 = 基线精确发送、style 不进 spoken text、非空 delivery 显式拒绝、身份由资产固定；「覆盖生效」不可交付，记录在案。
 - G-06 修订：听判集 = **5 个样本**（zh/en/de/it/mixed，基线形态）的身份与吐字确认；「style A-B」记为冻结 wire 下结构性不可行；未来如需按句情绪，另设设计（如多资产变体，记为远期选项、不承诺）。
 - 时序：拒绝语义的小改可在矩阵完成后、Gate-G 收口前落地（不影响本轮 5 次渲染）；落地时补测（带基线资产 + delivery → 422、provider 0 次）。
+
+## Addendum A4 — job 10 STOPPED（脚本依赖假设）与 4 次分配裁决（2026-09-28 凌晨）
+
+复核对象：`11808eb`（job 10 证据：新 daemon.log、render_results.json、job09 日志分离留档）。
+
+**独立核验（只读，零渲染）**：job 10 = 中文 19 字 + 资产基线（无 delivery）→ 单次 POST、provider 404 NOT_FOUND → 500 synthesis_failed，无重试；与 probe #5 的关键变量逐字一致（style 1266 字节保真此前已验），**唯一差异 = 正文脚本**（Latin vs CJK）。
+
+**经验法则（截至两对样本，属假设）**：`style = 整段设计文本` **且** `正文 Latin` → 可解析（1/1）；缺任一 → 404（CJK 1/1 拒、无 style 的 Latin 3/3 拒）。
+
+**裁决（4 次分配，任一失败即停）**：① en（daemon + 基线）——同时是「daemon 路径对 Latin 是否忠实」的第一枪（此前 daemon 从未成功过任何 gemini 渲染）；② de；③ it；④ **direct-call + 中文**（隔离“provider 级 CJK 拒绝”与“daemon 路径差异”两种解释；若 200 则同时拿下 zh 样本、另立路径缺陷修复）；④ 若 404 → CJK 假设升级为强结论。
+
+**影响面（提前标注）**：若 CJK 被 provider 级拒绝，zh 与 mixed 样本不可得 ⇒ **G-06（中/英/德/意+混写证据）无法按现文满足**，属产品级发现；mixed 语料含中文，替代（Latin-only mixed）需 Alicia 决定且属新预算轮。另记远期选项（不承诺）：SDK 层显式 language_code 变体探测、或多资产变体。
+
+**免费问题（批准）**：请 Alicia 回答「AI Studio 里用 '2.5 2' 生成时念的是中文还是英文句子；现在还能让它在播放器里念中文吗」——区分“仅公开 API 受限”与“声线本身不吃中文”。
+
+**预算**：10/14；本轮 4 次 → 14/14；无新增授权。
