@@ -32,6 +32,6 @@ Python 源码统一使用 ASCII 双引号；文本基线见 `.gitattributes` / `
 ## Milestones
 
 - **M1（已完成）**：仓库骨架 + 声音资产库（`src/exocore_tts/voices.py`）+ 选角台（`src/exocore_tts/casting.py`、`tools/cast.py`）。
-- **M2（部分落地，等待独立验收）**：`POST /tts` + `GET /health` 守护进程。已提交：CP-A `668b463`（非 GPU 地基：契约层 / 编排 / 单 worker 生命周期 / 分段 / `fake` 替身 / 启动门禁）与 CP-B `a82f83a`（`voxcpm.py` 共用低层入口 + `voxcpm2` 真推理 + casting 不回归）；非 GPU 测试 151/151。生命周期已裁决并实现：**惰性加载**（启动不加载模型）、**空闲卸载默认 1800 s**（`EXOCORE_TTS_IDLE_UNLOAD_SECONDS`，`0` 禁用，可配置）。剩余：delivery 人耳探针、`voices.py` 旧 Django 镜像说明、真机冒烟（en/de、多段、idle 卸载、load 失败）；证据见 `Plan/0003_checkpoint_A_acceptance.md` / `Plan/0003_checkpoint_B_acceptance.md`。
+- **M2（CP-A / CP-B 实现已提交，等待独立实现验收）**：`POST /tts` + `GET /health` 守护进程。已提交：CP-A `668b463`（非 GPU 地基：契约层 / 编排 / 单 worker 生命周期 / 分段 / `fake` 替身 / 启动门禁）与 CP-B `a82f83a`（`voxcpm.py` 共用低层入口 + `voxcpm2` 真推理 + casting 不回归），builder 证据包已就绪、**尚无独立实现验收结论**；非 GPU 测试 151/151。生命周期已裁决并实现：**惰性加载**（启动不加载模型）、**空闲卸载默认 1800 s**（`EXOCORE_TTS_IDLE_UNLOAD_SECONDS`，`0` 禁用，可配置）。**delivery 产品门已收口**：探针 `0a7f19c` 未通过（Alicia 听判），本地 `voxcpm2` 固定 `supports_delivery=False`、非空 `delivery` 返回 `422`。剩余：`voices.py` 旧 Django 镜像说明、真机冒烟（en/de、多段、idle 卸载、load 失败）；证据见 `Plan/0003_checkpoint_A_acceptance.md` / `Plan/0003_checkpoint_B_acceptance.md` / `Plan/0003_delivery_probe_result.md`。
 - **M3**：ExoCore 适配器改 key-based + `base_url` 配置化（跨仓，计划落 `ExoCore/Plan/`）。
 - **M4**：工具侧 `send_voice_msg` 与前端接线。

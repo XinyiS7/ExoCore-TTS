@@ -34,6 +34,7 @@ ExoCore (Django)                        本仓库 = 声音工厂
 
 - `text`：去首尾空白后非空，且不超过 `EXOCORE_TTS_MAX_TEXT_CHARS`（默认 **600**；调用方也要预检，不要静默截断）。
 - `delivery`：空白等价于未提供，上限 **500** 字符；它是表演意图，**不是**基底风格覆盖，也不得承载 cfg / timesteps / seed / 引擎或 provider 标识。
+- **当前状态：本地 `voxcpm2` 固定拒绝非空 `delivery`**（`422 delivery_unsupported`）：能力探针已执行、Alicia 听判未通过（证据 `Plan/0003_delivery_probe_result.md`，提交 `0a7f19c`）——这是该产品门的完成结果，不是故障。字段保留给未来的后端；M4 的 `send_voice_msg` 不得把本地 delivery 当必备能力。
 - 旧草案的 `style` / `defaults` / `seed` / `verify` / `format` **不是端口字段**（选角 CLI 的 `--style` 是资产制作参数，与端口无关）。ExoCore 侧产品面可以另叫（例如 `send_voice_msg` 的 `emotion`），但必须映射到 `delivery`；wire 上只有这一个名字。
 - `delivery` 只接受字符串：显式 `null` 是类型错误（`422`）；判定顺序为字段（422）→ 资产存在性（404）→ 资产可用性（503）→ `delivery` 能力（422）。
 - 成功：`200`，`Content-Type: audio/wav`，正文是裸 WAV 字节。**不提供** RTF / 设备 / 分段数之类的稳定响应头（它们只进 daemon 日志）；采样率、位深、声道由工厂决定，调用方不得依赖具体取值。
@@ -116,7 +117,7 @@ API key 只在调用时从 `GEMINI_API_KEY` 或 `ExoCore/.env` 现取：**不进
 |---|---|---|
 | **M1** | 仓库骨架 + 声音资产库 + 选角台（本文件描述的工具） | ✅ 已落地 |
 | **M1.5** | `register` 子命令（收外部参考音频）+ 资产体检 + 首条正式声线 `sandro_v1` | ✅ 已落地 |
-| **M2** | `POST /tts` + `GET /health` 守护进程（`backends/fake` 用于契约测试 + `backends/voxcpm2` 真推理；按需加载、空闲卸载） | **部分落地，等待独立验收**：CP-A `668b463`（非 GPU 地基）+ CP-B `a82f83a`（真实 Vox 路径），非 GPU 测试 151/151；剩余 delivery 人耳探针、`voices.py` 文档收尾、真机冒烟 §9.2 步骤 4–8 |
+| **M2** | `POST /tts` + `GET /health` 守护进程（`backends/fake` 用于契约测试 + `backends/voxcpm2` 真推理；按需加载、空闲卸载） | **CP-A / CP-B 实现已提交，等待独立实现验收**：CP-A `668b463` + CP-B `a82f83a`，builder 证据包已就绪，非 GPU 测试 151/151；delivery 产品门已收口（探针未通过 → 本地固定 `422`）；剩余 `voices.py` 文档收尾、真机冒烟 §9.2 步骤 4–8 |
 | **M3** | ExoCore 适配器改 key-based + `base_url` 配置化 + 区分「冷启动中」与「服务离线」（跨仓计划落 `ExoCore/Plan/`） | 待施工 |
 | **M4** | 工具侧 `send_voice_msg`（落库即开始合成）+ 前端独立语音条 | 待施工 |
 
@@ -130,7 +131,7 @@ API key 只在调用时从 `GEMINI_API_KEY` 或 `ExoCore/.env` 现取：**不进
 4. **`send_voice_msg` 的 UI 形态 = 独立语音条**（消息上第二个播放器，与正文朗读并存）。UI 要重新设计，但底层先做（M4）。
 5. **免冻结的声音资产进 git**（`voices/` 不 ignore）；候选池 `candidates/` 不进。
 
-M2 当前状态：CP-A `668b463` + CP-B `a82f83a` 已提交、等待独立验收；**冷加载实测 53.56 s、首个冷请求 73.88 s**（见「环境」），M3 timeout 预算 ≥ 90 s；**空闲卸载默认 `EXOCORE_TTS_IDLE_UNLOAD_SECONDS=1800`**（`0` 表示不卸载；该默认值由 M2 计划裁定，最终仍待 Alicia 确认；真机 idle 卸载属待收口的冒烟）。ExoCore 侧现有 10 秒超时 + 60 秒假死阈值对冷启动与长文本都不够用，属于 M3 必须一起改的契约变更。
+M2 当前状态：**CP-A `668b463` + CP-B `a82f83a` 实现已提交**、builder 证据包已就绪，**仍等待独立实现验收**（Gate-0 的 PASS 只覆盖契约/文档一致性）；**delivery 产品门已收口**（探针 `0a7f19c` 未通过 → 本地固定 `422`）；**冷加载实测 53.56 s、首个冷请求 73.88 s**（见「环境」），M3 timeout 预算 ≥ 90 s；**空闲卸载默认 `EXOCORE_TTS_IDLE_UNLOAD_SECONDS=1800`**（`0` 表示不卸载；该默认值由 M2 计划裁定，最终仍待 Alicia 确认；真机 idle 卸载属待收口的冒烟）。ExoCore 侧现有 10 秒超时 + 60 秒假死阈值对冷启动与长文本都不够用，属于 M3 必须一起改的契约变更。
 
 ## 环境
 

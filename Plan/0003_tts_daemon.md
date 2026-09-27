@@ -1,6 +1,6 @@
 # 0003 — TTS 守护进程（M2，重写版）
 
-> **状态**：**部分已实现，等待独立验收**。§8 第 1–4 步已落地并提交：CP-A `668b463`（非 GPU 地基：契约层 / 编排 / 单 worker 生命周期 / 分段 / fake 替身 / 启动门禁）与 CP-B `a82f83a`（`voxcpm.py` 共用低层入口 + `backends/voxcpm2.py` 真实引擎 + casting 零回归）。**仍开放**：§8 第 5 步 delivery 人耳探针、第 6 步文档收尾（`voices.py`）、第 7 步真机冒烟剩余项（§9.2 步骤 4–8）。本文件继续作为端口契约的唯一权威；实现事实以两个 checkpoint 验收包为准。
+> **状态**：**CP-A / CP-B 实现已提交，仍在等待独立实现验收**。CP-A `668b463`（非 GPU 地基：契约层 / 编排 / 单 worker 生命周期 / 分段 / fake 替身 / 启动门禁）与 CP-B `a82f83a`（`voxcpm.py` 共用低层入口 + `backends/voxcpm2.py` 真实引擎 + casting 零回归）的实现已入库，builder 证据包 `Plan/0003_checkpoint_A_acceptance.md` / `_B_` 已就绪，**尚无独立实现验收结论**（本节提到的 Gate-0 PASS 只覆盖契约与文档一致性，不可读作实现验收）。**已收口的 product gate**：§8 第 5 步 delivery 探针已执行（`0a7f19c`，证据 `Plan/0003_delivery_probe_result.md`）——Alicia 听判**未通过**，按 §3 失败分支固定为 `supports_delivery=False` + 非空 `delivery` 返回 `422 delivery_unsupported`；这是该门的完成结果，不是开放项，也不代表 M2 实现失败。**仍未完成**：第 6 步 `voices.py` 文档收尾、第 7 步真机冒烟剩余项（§9.2 步骤 4–8）。本文件继续作为端口契约的唯一权威；实现事实以三个 evidence 文档为准。
 > **范围**：仅 `ExoCore-TTS` 仓库。
 > **计划作者**：gpt-5.6-sol / Solaire
 > **Pruning review**：deepseek/deepseek-flash / Ecki
@@ -157,6 +157,8 @@ fake backend 必须接收同一 engine-neutral 字段，以验证从 HTTP 到 ba
 
 `delivery` 被保留是为了冻结后端无关的长期 wire seam，不代表当前唯一真实后端 VoxCPM2 必然支持它。若门禁不通过，M2 的本地 Vox 对非空 `delivery` 将持续显式拒绝；后续 M4 不得把它当成本地必备能力 [deepseek/deepseek-flash / Ecki review；gpt-5.6-sol / Solaire approved]。
 
+> **门禁结果（已执行，2026-09-27；未通过）**：文本前缀 4/4 被念出，`prompt_text` 注入无污染但无指向性且伤音色；Alicia 听判不通过。因此 VoxCPM2 固定 `supports_delivery = False`，非空 `delivery` 返回 `422 delivery_unsupported`。机制穷举、对照音频与客观指标见 `Plan/0003_delivery_probe_result.md`，提交 `0a7f19c`（运行时行为未变）。
+
 ---
 
 ## 4. 服务内部设计
@@ -306,10 +308,10 @@ tests/test_text.py
 src/exocore_tts/casting.py     ✅ 已落地（CP-B a82f83a）：内部实现下沉 `voxcpm`，CLI / manifest 不变
 src/exocore_tts/config.py      ✅ 已落地（CP-A 668b463）：daemon 配置 + 字面量 loopback 启动门禁
 pyproject.toml                 ✅ 已落地（CP-A）：daemon 入口 + dev extra（httpx）
-src/exocore_tts/voices.py      ⬜ 未做：删除“字段镜像到 Django VoiceProfile”的旧权威说明
+src/exocore_tts/voices.py      ⬜ 仍开放（归属 pane-3；committed 且 accepted 前不算完成）：删除“字段镜像到 Django VoiceProfile”的旧权威说明
 ```
 
-`README.md` / `AGENTS.md` 属文档收尾：本计划冻结的契约摘要、里程碑状态与运行约束已在 Gate-0 文档修复中更新（见 §8 第 6 步）。
+`README.md` / `AGENTS.md` 属文档收尾：本计划冻结的契约摘要、里程碑状态与运行约束已在 Gate-0 文档修复中更新（Gate-0 只覆盖契约 / 文档一致性，不含实现验收；见 §8 第 6 步）。
 
 计划外新增（已记入验收包偏差表）：`src/exocore_tts/errors.py`（CP-A §5a）、`tests/test_voxcpm_backend.py`（CP-B §6b）。测试文件可按实现后的职责合并，禁止为了匹配文件清单制造空壳模块。不得修改三条已冻结 WAV，或无必要改写其 `voice.json`。
 
@@ -317,17 +319,17 @@ src/exocore_tts/voices.py      ⬜ 未做：删除“字段镜像到 Django Voic
 
 ## 8. 施工顺序与当前状态
 
-**已完成**（Builder 已停手，等待独立验收）：
+**步骤 1–5 已完成；CP-A / CP-B 独立实现验收仍待结论**：
 
 1. ✅ **契约地基**（CP-A `668b463`）：配置对象、稳定领域错误、backend 最小协议、fake backend；`/tts`、`/health`、鉴权与错误边界由 fake 固定。
 2. ✅ **文本与音频管线**（CP-A）：总量门禁、分段、静音拼接、客观结构校验。
 3. ✅ **runtime 生命周期**（CP-A）：单 worker 队列、状态快照、exactly-once 加载、失败恢复、idle monitor 与安全卸载。
-4. ✅ **Vox 能力抽取**（CP-B `a82f83a`）：`voxcpm.py` 共用低层入口、`voxcpm2` backend 进生产 registry、casting 65 例零回归；真机基本链路 smoke 通过（cold → loading → ready → WAV，加载期 `/health` 全程可响应；并发“只加载一次 / 推理串行”由非 GPU 用例钉住，真机未单独留档）。
+4. ✅ **Vox 能力抽取**（CP-B `a82f83a`）：`voxcpm.py` 共用低层入口、`voxcpm2` backend 进生产 registry、casting 65 例零回归；builder 真机基本链路 smoke 记录（cold → loading → ready → WAV，加载期 `/health` 全程可响应；并发“只加载一次 / 推理串行”由非 GPU 用例钉住，真机未单独留档）。
+5. ✅ **delivery 门禁探测（已完成，未通过）**：按 §3 执行——探针 `0a7f19c` + `Plan/0003_delivery_probe_result.md`；Alicia 听判未通过，按失败分支固定 `supports_delivery=False` / `422 delivery_unsupported`。这是该门的完成结果，不是开放项，也不是 M2 实现失败。
 
 **仍未完成**：
 
-5. ⬜ **delivery 门禁探测**：按第 3 节执行；只有 Alicia 人耳确认通过才启用 Vox 映射，否则固定为显式 `delivery_unsupported`（现状：已固定拒绝）。
-6. 🟡 **文档收尾**：Gate-0 文档修复已更新 README 的契约摘要 / 里程碑 / 单 worker 约束与 AGENTS 里程碑；**剩余** `voices.py` 的旧 Django 镜像说明。
+6. ⬜ **文档收尾**：Gate-0 文档修复已更新 README 的契约摘要 / 里程碑 / 单 worker 约束与 AGENTS 里程碑；**仍开放**（归属 pane-3，committed 且 accepted 前不算完成）：`voices.py` 的旧 Django 镜像说明。
 7. ⬜ **真机冒烟剩余项**：§9.2 步骤 4–8（en/de 声线、多段长文本、idle 卸载、load 失败恢复）；真机失败先区分代码缺陷与已知 commit/pagefile 环境不足。
 
 每个里程碑只修改本仓拥有的文件；M3/M4 未授权前不碰 ExoCore 或 Desktop。
@@ -336,7 +338,7 @@ src/exocore_tts/voices.py      ⬜ 未做：删除“字段镜像到 Django Voic
 
 ## 9. 验证目标（不冻结测试实现）
 
-> **当前状态**：§9.1 的各条要求已由 CP-A / CP-B 的实现与用例覆盖（非 GPU **151/151**）；决定性断言清单见两个验收包 §4，本文件不复制证据。§9.2 的真机冒烟只完成了步骤 1–2（步骤 3 的并发由非 GPU 用例覆盖），步骤 4–8 仍待收口。
+> **当前状态**：§9.1 的各条要求已由 CP-A / CP-B 的实现与用例覆盖（非 GPU **151/151**）；决定性断言清单见两个 checkpoint 验收包 §4，本文件不复制证据。**实现验收本身仍待独立结论**（证据包 ≠ 验收结论）。delivery 产品门已按 §3 收口（未通过 → 本地固定拒绝，证据 `Plan/0003_delivery_probe_result.md`）。§9.2 的真机冒烟只完成了步骤 1–2（步骤 3 的并发由非 GPU 用例覆盖），步骤 4–8 仍待收口。
 
 ### 9.1 自动化：不加载模型、不联网
 
