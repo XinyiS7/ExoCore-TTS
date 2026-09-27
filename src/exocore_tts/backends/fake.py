@@ -19,6 +19,7 @@ from dataclasses import dataclass
 
 from exocore_tts.backends.base import AudioResult
 from exocore_tts.errors import DeliveryUnsupported
+from exocore_tts.text import segment_text
 from exocore_tts.voices import VoiceAsset
 
 GATE_TIMEOUT_S = 5.0
@@ -77,6 +78,10 @@ class FakeBackend:
 
     def supports_delivery(self) -> bool:
         return self.delivery_supported
+
+    def plan_segments(self, text: str) -> list[str]:
+        """Local splitter: the fake keeps the production segmentation shape observable."""
+        return segment_text(text)
 
     def check_asset(self, asset: VoiceAsset) -> None:
         """Nothing to check: the fake consumes no files and no device."""

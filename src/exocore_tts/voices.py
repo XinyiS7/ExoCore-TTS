@@ -9,6 +9,12 @@ The kit stays engine-agnostic on purpose: `engine` names which backend should co
 asset, and `generation_defaults` carries backend-specific knobs. ExoCore only ever refers to
 the opaque `key`; it never learns how a voice is materialised.
 
+A cloud voice needs no reference clip: its manifest carries the provider's own voice
+reference in `cloud_voice`, written only by the managed registration path
+(`tools/register_cloud_voice.py` -> `save_cloud_voice`). That reference is a provider id or
+name, never a local path, and a missing or malformed one makes the asset unusable -- a
+backend must fail closed instead of falling back to some other voice (Plan/0004 §2.2).
+
 The manifest is the single authority for how a voice is spoken. Anything on the ExoCore side
 that binds a voice (M3) stores the key and points here; it must not mirror these fields as
 a second truth about the voice.
@@ -33,6 +39,9 @@ from exocore_tts.config import voice_root
 KEY_PATTERN = re.compile(r"[a-z0-9][a-z0-9_]*")
 VOICE_MANIFEST = "voice.json"
 DEFAULT_REFERENCE_CLIP = "reference.wav"
+
+# The only accepted shapes of `VoiceAsset.cloud_voice`; see `cloud_voice_ref`.
+CLOUD_VOICE_KINDS = ("id", "name")
 
 MIN_REFERENCE_SECONDS = 3.0
 SILENCE_PEAK = 0.02
@@ -105,6 +114,7 @@ class VoiceAsset:
     key: str
     display_name: str = ""
     engine: str = "voxcpm2"
+    cloud_voice: dict = field(default_factory=dict)
     baseline_instruction: str = ""
     prompt_text: str = ""
     reference_clip: str = DEFAULT_REFERENCE_CLIP
@@ -119,6 +129,50 @@ class VoiceAsset:
     def from_dict(cls, payload: dict) -> "VoiceAsset":
         known = {f for f in cls.__dataclass_fields__}
         return cls(**{k: v for k, v in payload.items() if k in known})
+
+
+def cloud_voice_ref(asset: VoiceAsset) -> tuple[str, str]:
+    """Return the provider `(kind, value)` a cloud engine must speak through.
+
+    `kind` is `"id"` (an account-level voice resource) or `"name"` (a designed voice
+    addressed by name); `value` is the provider's own identifier, never a host path. A
+    missing, mistyped, unknown or blank reference means the asset cannot be spoken: this
+    raises `ValueError` so the engine refuses the request instead of guessing a default
+    voice (Plan/0004 §2.2).
+    """
+    payload = asset.cloud_voice
+    if not isinstance(payload, dict):
+        raise ValueError(f"voice {asset.key!r} cloud_voice must be an object")
+    kind = payload.get("kind")
+    value = payload.get("value")
+    if kind not in CLOUD_VOICE_KINDS:
+        raise ValueError(
+            f"voice {asset.key!r} cloud_voice.kind must be one of {CLOUD_VOICE_KINDS}"
+        )
+    if not isinstance(value, str) or not value.strip():
+        raise ValueError(f"voice {asset.key!r} cloud_voice.value must be a non-empty string")
+    return kind, value.strip()
+
+
+def save_cloud_voice(asset: VoiceAsset, *, force: bool = False) -> Path:
+    """Register a cloud voice asset (no clip) through the managed, atomic write path.
+
+    Mirrors `save_voice`: an existing manifest is never replaced silently, the reference is
+    normalised (and thereby validated) before anything is written, and the manifest appears
+    only complete because the write is atomic.
+    """
+    validate_key(asset.key)
+    kind, value = cloud_voice_ref(asset)
+    asset.cloud_voice = {"kind": kind, "value": value}
+    target_dir = voice_dir(asset.key)
+    manifest = target_dir / VOICE_MANIFEST
+    if manifest.exists() and not force:
+        raise FileExistsError(
+            f"Voice {asset.key!r} already exists at {target_dir}; pass --force to replace it."
+        )
+    target_dir.mkdir(parents=True, exist_ok=True)
+    _write_json_atomic(manifest, asset.to_dict())
+    return target_dir
 
 
 def voice_dir(key: str) -> Path:

@@ -24,6 +24,7 @@ from exocore_tts.errors import (
     UnknownVoice,
 )
 from exocore_tts.service import GAP_MS, MAX_DELIVERY_CHARS, TtsService
+from exocore_tts.text import segment_text
 
 SAMPLES_PER_CHAR = 16
 
@@ -48,6 +49,9 @@ class StubBackend:
 
     def supports_delivery(self):
         return True
+
+    def plan_segments(self, text):
+        return segment_text(text)
 
     def check_asset(self, asset):
         return None

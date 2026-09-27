@@ -1,9 +1,11 @@
 """Request-level orchestration: validate, segment, synthesize, assemble, verify.
 
 This module owns everything between the HTTP contract and the engine backends: which voice
-asset answers a key, how long the request may be, how the text is split, how segments are
-joined and what "valid audio" objectively means. It never touches HTTP and never renders an
-error body -- it raises the stable domain errors and `server.py` maps them.
+asset answers a key, how long the request may be, how the segments a backend planned are
+joined and what "valid audio" objectively means. The split itself is backend-owned policy
+(`Backend.plan_segments`), because a local inference and a paid cloud render cannot share
+one rule (Plan/0004 §2.4). It never touches HTTP and never renders an error body -- it
+raises the stable domain errors and `server.py` maps them.
 
 The only output format this layer knows is the port's raw WAV byte string (Plan/0003 §2.1).
 """
@@ -25,7 +27,6 @@ from exocore_tts.errors import (
     UnknownVoice,
 )
 from exocore_tts.runtime import ModelRuntime, RuntimeState
-from exocore_tts.text import segment_text
 from exocore_tts.voices import VoiceAsset, load_voice, validate_key
 
 logger = logging.getLogger("exocore_tts.service")
@@ -91,7 +92,7 @@ class TtsService:
         if clean_delivery and not backend.supports_delivery():
             raise DeliveryUnsupported(f"engine {backend.engine!r} cannot implement delivery")
 
-        segments = segment_text(clean_text)
+        segments = backend.plan_segments(clean_text)
         started = time.perf_counter()
         runtime = self._runtimes[asset.engine]
         wav = runtime.run(

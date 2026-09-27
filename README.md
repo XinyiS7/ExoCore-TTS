@@ -111,6 +111,27 @@ E:/Miniconda3/envs/voxcpm_runtime/python.exe tools/render_reference.py     --rec
 API key 只在调用时从 `GEMINI_API_KEY` 或 `ExoCore/.env` 现取：**不进本仓、不打印**，报错信息也过
 `scrub_secrets`。渲出来的音频用 `tools/cast.py register` 冻结（逐字稿是强制项）。
 
+### 生产云端引擎（`engine = "gemini"`，Plan/0004 CP-G1）
+
+daemon 的 backend registry 现在有两个引擎：`voxcpm2`（本地克隆）与 `gemini`（云端声线，供
+`delivery` 风格指令使用）。云端声线走**受管资产**：`voices/<key>/voice.json` 的 `engine` 为
+`"gemini"`，`cloud_voice` 记 provider 引用——`{"kind": "id" 或 "name", "value": ...}`，
+只能由工具原子写入，不靠手改：
+
+```bash
+E:/Miniconda3/envs/voxcpm_runtime/python.exe tools/register_cloud_voice.py \
+    --key sandro_gemini_v1 --kind name --value "<声线名或资源 id>" --preflight
+```
+
+- `--preflight` 花**恰好一次** provider render，先证明当前 key 能访问该引用，再登记；访问失败
+  就停下报错（该请求回 `503 engine_unavailable`）——**不会** fallback 到别的声线，也不会自动
+  新建一个；
+- 服务端不变量：**一个 HTTP 请求 = 恰好一次 provider render**（云端不分段、不重试）；`delivery`
+  一对一传给 provider 的 style（空白等价不传），provider 侧失败回 `500 synthesis_failed`，
+  HTTP body 里永远只有错误码；
+- 依赖走本服务自己的 extras（`pip install -e ".[cloud]"`）；缺 SDK 或缺 key 时该引擎按 `503
+  engine_unavailable` 失败关闭，本地 `voxcpm2` 与普通朗读完全不受影响。
+
 ## 里程碑
 
 | | 内容 | 状态 |
@@ -120,6 +141,7 @@ API key 只在调用时从 `GEMINI_API_KEY` 或 `ExoCore/.env` 现取：**不进
 | **M2** | `POST /tts` + `GET /health` 守护进程（`backends/fake` 用于契约测试 + `backends/voxcpm2` 真推理；按需加载、空闲卸载） | **M2 已通过独立实现验收**（`f9be708` / `Plan/0003_m2_independent_acceptance.md`：CP-A / CP-B / 真机收尾 / Amendment 01 均 PASS）：`668b463` + `a82f83a` + `b8930c3` + `fab2d9c`；非 GPU 测试 159/159 已由 `f9be708` 独立复现，真机收尾数据仍是 builder 证据（经 verdict 引用接受）；delivery 产品门已收口（未通过 → 本地固定 `422`）；Gate-0 的 PASS 只覆盖契约 / 文档一致性，与实现 verdict 不混读 |
 | **M3** | ExoCore 适配器改 key-based + `base_url` 配置化 + 区分「冷启动中」与「服务离线」（跨仓计划落 `ExoCore/Plan/`） | 后端适配切片已提交（ExoCore `fb3b7bed` 薄客户端接线 + `428b609f` voice binding）；剩余：Desktop 配套 + 真实 `:8769` 联调 + 独立 CP-B 最终裁决 |
 | **M4** | 工具侧 `send_voice_msg`（落库即开始合成）+ 前端独立语音条 | 待施工 |
+| **CP-G1** | 生产云端引擎接线：`engine = "gemini"` backend + 受管云资产 + 登记工具 +「一请求一次付费渲染」（`Plan/0004_gemini_production_renderer.md`） | 离线接线已落地（builder 证据，待独立验收）；Gate-G 真机能力门（CP-G2，需 key 与原始 voice 配对）**未跑，不声称 PASS** |
 
 ## 已裁决口径（Alicia，2026-09-26）
 
@@ -143,6 +165,13 @@ E:/Miniconda3/envs/voxcpm_runtime/python.exe -m unittest discover -s tests -v
 ```
 
 （安装会在环境的 `Scripts/` 里生成一个 `exocore-cast`，`conda activate voxcpm_runtime` 后可直接当命令用；本文件统一用 `tools/cast.py` 举例，两者等价。）
+
+云端引擎（`engine = "gemini"`）另需可选依赖，同样只装在这个环境里（**绝不进** ExoCore 的
+requirements）：
+
+```bash
+E:/Miniconda3/envs/voxcpm_runtime/python.exe -m pip install -e ".[cloud]"   # google-genai>=2
+```
 
 - 环境：`voxcpm_runtime`（Python 3.10 + torch 2.5.1+cu121 + voxcpm 2.0.3）
 - 权重：`~/.cache/huggingface/hub/models--openbmb--VoxCPM2`（4.7GB，已下载）

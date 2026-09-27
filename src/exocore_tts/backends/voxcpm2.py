@@ -22,6 +22,7 @@ import secrets
 from exocore_tts import voxcpm
 from exocore_tts.backends.base import AudioResult
 from exocore_tts.errors import DeliveryUnsupported, EngineUnavailable
+from exocore_tts.text import segment_text
 from exocore_tts.voices import DEFAULT_REFERENCE_CLIP, VoiceAsset, voice_dir
 
 logger = logging.getLogger("exocore_tts.voxcpm2")
@@ -43,6 +44,10 @@ class VoxCpm2Backend:
     def supports_delivery(self) -> bool:
         """Frozen after the measured probe: no safe delivery mapping exists for this engine."""
         return False
+
+    def plan_segments(self, text: str) -> list[str]:
+        """The measured local budget decides where one inference ends (Plan/0003 §4.3)."""
+        return segment_text(text)
 
     def check_asset(self, asset: VoiceAsset) -> None:
         """Refuse a damaged asset before a model load is paid for."""

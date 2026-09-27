@@ -90,6 +90,21 @@ def read_api_key(dotenv: Path | None = None, env_var: str = DEFAULT_ENV_VAR) -> 
     raise CloudError(f"no {env_var} in the environment or in {path}")
 
 
+def load_sdk() -> None:
+    """Import the provider SDK on demand; a missing dependency is a `CloudError`.
+
+    The daemon has to keep starting and serving the local engine on a machine where the
+    cloud dependency is not installed, so this import happens only when a cloud render is
+    actually about to be attempted. Its absence is the port's `engine_unavailable`, never an
+    ImportError escaping a backend.
+    """
+    try:
+        from google import genai  # noqa: F401 - the import itself is the check
+        from google.genai import types  # noqa: F401
+    except Exception as exc:  # noqa: BLE001 - any import failure means "no SDK here"
+        raise CloudError("google-genai is not installed") from exc
+
+
 def scrub_secrets(text: str, secret: str) -> str:
     """Strip a key (and the fragments SDKs like to quote back) out of a message."""
     for fragment in (secret, secret[:12], secret[-8:]):

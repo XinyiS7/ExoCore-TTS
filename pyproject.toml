@@ -18,6 +18,9 @@ dependencies = [
 [project.optional-dependencies]
 server = ["fastapi>=0.115,<1", "pydantic>=2.10,<3", "uvicorn>=0.30,<1"]
 voxcpm2 = ["voxcpm>=2.0,<3"]
+# 云端引擎（asset `engine = "gemini"`）：provider SDK 是本服务自己的可选依赖，
+# 不是 ExoCore 的 requirements；未安装时该引擎按 503 engine_unavailable 失败关闭。
+cloud = ["google-genai>=2,<3"]
 # HTTP contract tests use FastAPI's TestClient, which needs httpx as its transport.
 dev = ["httpx>=0.27,<1"]
 

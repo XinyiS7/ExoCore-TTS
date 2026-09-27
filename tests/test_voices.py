@@ -1,4 +1,5 @@
 """Voice asset store: canonical voices, their clips and manifests. No GPU involved."""
+import json
 import os
 import tempfile
 import unittest
@@ -87,6 +88,78 @@ class VoiceStoreTests(unittest.TestCase):
     def test_unknown_voice_raises(self):
         with self.assertRaises(FileNotFoundError):
             voices.load_voice("never_made")
+
+    # -- cloud assets (Plan/0004 §2.2) -------------------------------------------------
+
+    def test_cloud_voice_round_trips_through_the_managed_writer(self):
+        asset = self._asset(
+            key="sandro_gemini_v1",
+            engine="gemini",
+            cloud_voice={"kind": "name", "value": "Ale 2.5 2"},
+        )
+        target = voices.save_cloud_voice(asset)
+        self.assertEqual(target, self.root / "sandro_gemini_v1")
+        loaded = voices.load_voice("sandro_gemini_v1")
+        self.assertEqual(loaded.engine, "gemini")
+        self.assertEqual(loaded.cloud_voice, {"kind": "name", "value": "Ale 2.5 2"})
+        self.assertEqual(voices.cloud_voice_ref(loaded), ("name", "Ale 2.5 2"))
+        # a cloud asset needs no local clip at all
+        self.assertFalse((target / voices.DEFAULT_REFERENCE_CLIP).exists())
+
+    def test_cloud_registration_never_replaces_a_manifest_silently(self):
+        first = {"kind": "id", "value": "voice_a"}
+        second = {"kind": "id", "value": "voice_b"}
+        voices.save_cloud_voice(self._asset(key="sandro_gemini_v1", engine="gemini", cloud_voice=first))
+        with self.assertRaises(FileExistsError):
+            voices.save_cloud_voice(
+                self._asset(key="sandro_gemini_v1", engine="gemini", cloud_voice=second)
+            )
+        self.assertEqual(voices.load_voice("sandro_gemini_v1").cloud_voice, first)
+        voices.save_cloud_voice(
+            self._asset(key="sandro_gemini_v1", engine="gemini", cloud_voice=second), force=True
+        )
+        self.assertEqual(voices.load_voice("sandro_gemini_v1").cloud_voice, second)
+
+    def test_cloud_reference_shapes_are_enforced(self):
+        def asset(payload):
+            return self._asset(key="c1", engine="gemini", cloud_voice=payload)
+
+        self.assertEqual(
+            voices.cloud_voice_ref(asset({"kind": "id", "value": "  voice_x  "})),
+            ("id", "voice_x"),
+        )
+        for bad in (
+            {},
+            {"kind": "prebuilt", "value": "Kore"},
+            {"kind": "name", "value": "   "},
+            {"kind": "name"},
+            {"kind": "name", "value": 7},
+            "Ale 2.5 2",
+            None,
+        ):
+            with self.subTest(bad=bad), self.assertRaises(ValueError):
+                voices.cloud_voice_ref(asset(bad))
+
+    def test_cloud_writer_persists_no_unusable_reference(self):
+        with self.assertRaises(ValueError):
+            voices.save_cloud_voice(
+                self._asset(key="c1", engine="gemini", cloud_voice={"kind": "prebuilt", "value": "Kore"})
+            )
+        self.assertFalse((self.root / "c1").exists())
+
+    def test_existing_vox_manifests_keep_an_empty_cloud_field(self):
+        voices.save_voice(self._asset(), self.clip)
+        self.assertEqual(voices.load_voice("sandro_v1").cloud_voice, {})
+        self.assertEqual(self._asset().cloud_voice, {})
+
+    def test_unknown_manifest_fields_are_still_ignored(self):
+        directory = self.root / "v1"
+        directory.mkdir()
+        (directory / voices.VOICE_MANIFEST).write_text(
+            json.dumps({"key": "v1", "engine": "voxcpm2", "surprise": {"nested": True}}),
+            encoding="utf-8",
+        )
+        self.assertEqual(voices.load_voice("v1").cloud_voice, {})
 
 
 if __name__ == "__main__":

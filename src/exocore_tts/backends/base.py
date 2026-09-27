@@ -1,8 +1,10 @@
 """The minimal contract every synthesis backend implements (Plan/0003 §4.1).
 
 A backend owns one engine (``"voxcpm2"`` today, a cloud vendor later) and translates
-factory-owned voice assets into raw audio. It never sees HTTP, never builds a response and
-never decides segmentation, verification or model lifetime: those belong to the daemon.
+factory-owned voice assets into raw audio. It never sees HTTP and never builds a response:
+verification, response shape and model lifetime belong to the daemon. What a backend does
+own is how one admitted text becomes its own engine calls -- the deterministic local split
+for a local engine, a single paid render for a cloud engine (Plan/0004 §2.4).
 
 A backend is constructed once and shared by every request of its engine; the daemon calls
 ``load``/``synthesize``/``unload`` only from the runtime's single worker thread, so a
@@ -38,6 +40,15 @@ class Backend(Protocol):
 
         A backend that answers ``False`` must never be handed a non-empty delivery; the
         service refuses the request instead of silently dropping the direction.
+        """
+
+    def plan_segments(self, text: str) -> list[str]:
+        """Split one admitted request text into the calls this engine will actually make.
+
+        The local engines keep the deterministic local splitter (Plan/0003 §4.3, Amendment
+        01); an engine that bills per call returns the whole text as a single segment so one
+        HTTP request stays exactly one provider render (Plan/0004 §2.4). The service renders
+        precisely these segments, in order, and never rebuilds its own policy.
         """
 
     def check_asset(self, asset: VoiceAsset) -> None:
