@@ -146,3 +146,28 @@
 3. 听判对已就绪：zh 基线（10.32 s）vs zh 短风格（7.12 s）——Alicia 判：同一人 / 表演差异 / 指令未被念出。
 4. **测试纪律记录（非生产缺陷）**：错误键被静默回退掩盖，导致两轮错误结论与预算浪费；builder 的免费门禁（key 长度断言 + `voices.get` 预检）是本类失误的正确防复发手段，后续所有 live 轮次必须经此门禁。
 5. **预算**：14/14 用尽；完成 G-06 矩阵（en/de/it/mixed）需 **+4（总 ≤18）**——已列入 Alicia 拍板项（计划 §3：超限必须她同意）。
+
+## Addendum A6 — CP-G2 verdict（工程面 PASS；G-06 收口待 Alicia 听判）（2026-09-28 凌晨）
+
+复核对象：`e9ebae7` + `0630e67`（A5 轮：en/de/it/mixed 四枪 + 证据 + 门禁先行记录）。
+
+**独立核验（只读，零渲染）**：
+- 四枪 WAV 逐字核验：`11_en_baseline` 299,564 B / 6.24 s（f7e110a6…）、`12_de_baseline` 478,124 B / 9.96 s（0bab1007…）、`13_it_baseline` 322,604 B / 6.72 s（689ec6eb…）、`14_mixed_baseline` 499,244 B / 10.40 s（b309bc44…）——与证据 §10 及 render_results.json 全部吻合。
+- 测试：非网络全量 **193/193 OK**（代码自 `3e93f08` 未变）。
+- 门禁履行：key 注入长度 53 + 免费 `voices.get` = 'Ale 2.5 2'，先验后花 ✓；daemon 侧全程 `segments=1`、每请求恰好 1 次 provider 调用、无重试 ✓。
+
+**Gate 判定（CP-G2）**：
+
+| Gate | 状态 | 依据 |
+|---|---|---|
+| G-01 wire | ✅ | 离线 + 全部 live 请求均走 text/voice_key/delivery |
+| G-02 identity | ✅ | 资产解析、无 fallback；免费门禁正面证明 key↔声线可见性 |
+| G-03 delivery | ✅（听判面） | zh 对：基线 vs 短风格有可听差异（“太慢” vs “好一点”）、指令未被念出、覆盖串 441 ≤ 500 可用 |
+| G-04 exactly-once | ✅ | 全部 live 轮单次调用、无自动重试 |
+| G-05 audio/error | ✅ | WAV 结构有效、错误体 bounded、无泄漏 |
+| G-06 multilingual | ⏳ | 五语证据齐（zh×3 + en/de/it/mixed）；**Alicia 对四条的身份/吐字确认待回** |
+| G-07 preserve M2 | ✅ | 193/193 + 本地资产零改动 |
+
+**CP-G2 = 工程面 PASS。** Gate-G 的宣布条件（§6）：Alicia 听完 en/de/it/mixed（身份 + 吐字）→ A7 记录 → README milestone + 计划状态改 PASS → TTS 仓推送（逐条披露）。
+
+**收口清单（待她听判后逐项）**：① A7 记录听判结论；② 计划状态行改 PASS；③ README milestone 更新（builder）；④ TTS 仓推送（builder；现 16+ 条未推、逐条披露；我复核后收存）；⑤ 不扩张：send_voice_msg 后续 checkpoint 不随本计划开工（§0）。
