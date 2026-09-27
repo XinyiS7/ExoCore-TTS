@@ -29,6 +29,10 @@ export GEMINI_API_KEY="$(sed -n 's/^GEM_TTS_KEY=//p' .env | head -1 | tr -d '\r"
 
 ## 3. 执行序列（渲染编号从 9/14 开始）
 
+**语义前提（Addendum A2 / b7efc77 裁决）**：非空 `delivery` **原样透传**（逐字，backend 不自动补 
+`"Style: "` 前缀）；前缀由**调用方**携带（本轮 B 腿即用调用方形态：`"Style: "` + §6 片段）。字体串只在
+资产侧基线里携带已验证形式；前缀必要性不单独花渲染（留给未来 `send_voice_msg` 映射层按需验证）。
+
 | # | 内容 | 期望 | 失败处置 |
 |---|---|---|---|
 | 9 | **B 腿 / 控制实验**：zh 文本 + `delivery` = `"Style: "` + §6 片段逐字前缀（≤500 字符） | 200 + WAV ⇒ 短风格串能解析该声线（控制通过） | 立即停：不烧矩阵、保留日志、交回 Solaire/Alicia |
@@ -50,3 +54,16 @@ export GEMINI_API_KEY="$(sed -n 's/^GEM_TTS_KEY=//p' .env | head -1 | tr -d '\r"
 - 任一请求非 200，或 WAV 结构校验失败
 - provider 返回 not-found / permission / 配额类错误
 - 需要"换一个声线才能继续"的任何情形（必须先交回，由 Alicia/Solaire 决定）
+
+## 6. 实现清单（设计已由 Addendum A2 批准；等 Alicia 施工授权后一次做完）
+
+| 文件 | 改动 |
+|---|---|
+| `src/exocore_tts/voices.py` | `VoiceAsset` 新增 `baseline_style: str = ""`（默认空 = 旧行为）；`save_cloud_voice` 新增校验（字符串、允许空、strip）；round-trip 保持 |
+| `src/exocore_tts/backends/gemini.py` | `synthesize` 里 `style = delivery if delivery else asset.baseline_style`；两者都空 → 不发 `speech_metadata`（与 CP-G1 已验收行为逐字一致）；`supports_delivery` / `check_asset` 不变 |
+| `tools/register_cloud_voice.py` | 新增 `--baseline-style-file PATH` 与 `--baseline-prefix TEXT`（默认空）；存储值 = `prefix + 文件内容`（**显式**，无隐式魔法）；受管原子写不变 |
+| `tests/test_gemini_backend.py` | 新增：基线默认发送（delivery 空）、delivery 覆盖、无基线资产行为与 CP-G1 逐字一致（不发 `speech_metadata`）、基线不进正文 |
+| `tests/test_voices.py` | 新增：`baseline_style` round-trip + 非法形状拒绝 + 旧 manifest 无损 |
+| `README.md` | 记录 `baseline_style` 语义、"前缀由调用方携带（原样透传）"规则、登记命令示例 |
+
+不碰：wire 三字段、`cloud_voice_ref` 语义、CP-G1 已验收的回归面、`.env` / `.gitignore` / `ai_studio_code.py`。
