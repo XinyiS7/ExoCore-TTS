@@ -29,6 +29,18 @@ export GEMINI_API_KEY="$(sed -n 's/^GEM_TTS_KEY=//p' .env | head -1 | tr -d '\r"
 
 ## 3. 执行序列（渲染编号从 9/14 开始）
 
+**步骤 0（登记，不花渲染）**：用登记工具写入 `voices/sandro_gemini_v1/voice.json`：
+
+```bash
+export GEMINI_API_KEY="$(sed -n 's/^GEM_TTS_KEY=//p' .env | head -1 | tr -d '\r"')"
+E:/Miniconda3/envs/voxcpm_runtime/python.exe tools/register_cloud_voice.py \
+    --key sandro_gemini_v1 --kind id --value voice_oj0e4iyst73a \
+    --baseline-style-file tools/cloud/prompts/ale.txt --baseline-prefix "Style: "
+```
+
+**不要加 `--preflight`**（Solaire 提醒）：probe #5 已是同串（`"Style: "` + ale.txt，1266 字符）的等价
+preflight，且第 10 次渲染（zh 基线）会再次验证基线路径；重跑 preflight 会意外多花 1 次。
+
 **语义前提（Addendum A2 / b7efc77 裁决）**：非空 `delivery` **原样透传**（逐字，backend 不自动补 
 `"Style: "` 前缀）；前缀由**调用方**携带（本轮 B 腿即用调用方形态：`"Style: "` + §6 片段）。字体串只在
 资产侧基线里携带已验证形式；前缀必要性不单独花渲染（留给未来 `send_voice_msg` 映射层按需验证）。
