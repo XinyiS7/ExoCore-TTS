@@ -218,7 +218,7 @@ class VoxCpm2BackendTests(unittest.TestCase):
             ),
         )
 
-    def test_delivery_is_refused_until_the_listening_probe_passes(self):
+    def test_delivery_stays_refused_after_the_measured_probe(self):
         self.assertFalse(self.backend.supports_delivery())
         loaded = voxcpm.LoadedModel(model=object(), sample_rate=24000, torch=None)
         with self.assertRaises(DeliveryUnsupported):

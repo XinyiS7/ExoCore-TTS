@@ -5,10 +5,11 @@ This is the only place where a factory voice asset turns into a Vox call (Plan/0
 * the reference clip, prompt transcript and settled generation parameters come from the
   ``VoiceAsset``; the host path never leaves this process;
 * the seed is generated here -- callers cannot choose or override it;
-* ``delivery`` is *not* implemented yet. Whether a natural-language direction can be
-  mapped into VoxCPM2 without breaking the voice is Alicia's listening gate
-  (Plan/0003 §3 / §8 step 5); until that probe passes, a non-empty delivery is refused
-  explicitly instead of being quietly dropped.
+* ``delivery`` is refused, and that is a measured outcome, not a stub. The capability probe
+  (2026-09-27, `Plan/0003_delivery_probe_result.md`) went through every lever this engine
+  has: a text prefix is read aloud in all four forms tried, and steering the clone prompt's
+  transcript is not spoken but produces no directed effect and hurt the voice by ear. No safe
+  mapping exists, so a non-empty delivery is rejected instead of being quietly dropped.
 
 The engine is constructed at daemon start-up and must stay import-light: torch and voxcpm
 are only touched inside ``load``/``synthesize``/``unload`` through ``exocore_tts.voxcpm``.
@@ -40,7 +41,7 @@ class VoxCpm2Backend:
     # -- Backend protocol ---------------------------------------------------------------
 
     def supports_delivery(self) -> bool:
-        """Frozen on purpose: the Vox delivery probe is a separate product gate."""
+        """Frozen after the measured probe: no safe delivery mapping exists for this engine."""
         return False
 
     def check_asset(self, asset: VoiceAsset) -> None:
@@ -78,7 +79,7 @@ class VoxCpm2Backend:
         delivery: str | None,
     ) -> AudioResult:
         if delivery:
-            raise DeliveryUnsupported("voxcpm2 has no verified delivery mapping yet")
+            raise DeliveryUnsupported("voxcpm2 has no safe delivery mapping (measured)")
         cfg_value, inference_timesteps = _generation_params(asset)
         samples, facts = voxcpm.generate(
             model,
