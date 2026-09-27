@@ -13,7 +13,11 @@ A cloud voice needs no reference clip: its manifest carries the provider's own v
 reference in `cloud_voice`, written only by the managed registration path
 (`tools/register_cloud_voice.py` -> `save_cloud_voice`). That reference is a provider id or
 name, never a local path, and a missing or malformed one makes the asset unusable -- a
-backend must fail closed instead of falling back to some other voice (Plan/0004 §2.2).
+backend must fail closed instead of falling back to some other voice (Plan/0004 §2.2). The
+same manifest may carry `baseline_style`: the provider style a cloud engine sends by default
+when a request brings no `delivery` of its own (empty means "send no style", which is what
+every asset did before the field existed). It is stored verbatim: any `"Style: "`-style
+convention belongs to the caller that registers it, never to a backend.
 
 The manifest is the single authority for how a voice is spoken. Anything on the ExoCore side
 that binds a voice (M3) stores the key and points here; it must not mirror these fields as
@@ -116,6 +120,7 @@ class VoiceAsset:
     engine: str = "voxcpm2"
     cloud_voice: dict = field(default_factory=dict)
     baseline_instruction: str = ""
+    baseline_style: str = ""
     prompt_text: str = ""
     reference_clip: str = DEFAULT_REFERENCE_CLIP
     generation_defaults: dict = field(default_factory=dict)
@@ -164,6 +169,9 @@ def save_cloud_voice(asset: VoiceAsset, *, force: bool = False) -> Path:
     validate_key(asset.key)
     kind, value = cloud_voice_ref(asset)
     asset.cloud_voice = {"kind": kind, "value": value}
+    if not isinstance(asset.baseline_style, str):
+        raise ValueError(f"voice {asset.key!r} baseline_style must be a string")
+    asset.baseline_style = asset.baseline_style.strip()
     target_dir = voice_dir(asset.key)
     manifest = target_dir / VOICE_MANIFEST
     if manifest.exists() and not force:

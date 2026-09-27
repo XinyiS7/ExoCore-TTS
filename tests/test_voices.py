@@ -140,6 +140,31 @@ class VoiceStoreTests(unittest.TestCase):
             with self.subTest(bad=bad), self.assertRaises(ValueError):
                 voices.cloud_voice_ref(asset(bad))
 
+    def test_cloud_baseline_style_round_trips_and_is_validated(self):
+        asset = self._asset(
+            key="sandro_gemini_v1",
+            engine="gemini",
+            cloud_voice={"kind": "id", "value": "voice_x"},
+            baseline_style="  Style: deep resonant baritone  ",
+        )
+        voices.save_cloud_voice(asset)
+        loaded = voices.load_voice("sandro_gemini_v1")
+        # stored verbatim apart from the surrounding whitespace -- no prefix is ever implied
+        self.assertEqual(loaded.baseline_style, "Style: deep resonant baritone")
+
+        with self.assertRaises(ValueError):
+            voices.save_cloud_voice(
+                self._asset(
+                    key="c2",
+                    engine="gemini",
+                    cloud_voice={"kind": "id", "value": "voice_x"},
+                    baseline_style=5,
+                )
+            )
+        self.assertFalse((self.root / "c2").exists())
+        # assets that never set the field keep the old shape
+        self.assertEqual(self._asset(key="old_vox").baseline_style, "")
+
     def test_cloud_writer_persists_no_unusable_reference(self):
         with self.assertRaises(ValueError):
             voices.save_cloud_voice(

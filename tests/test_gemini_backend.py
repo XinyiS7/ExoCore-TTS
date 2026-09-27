@@ -235,6 +235,48 @@ class AssetGateTests(CloudTestCase):
         self.assertEqual(self.client.calls, [])
 
 
+class BaselineStyleTests(CloudTestCase):
+    """Addendum A2: the asset's baseline style is the default; delivery overrides verbatim."""
+
+    BASELINE = "Style: " + ("deep resonant baritone " * 3).strip()
+
+    def test_baseline_is_the_default_style_when_delivery_is_absent(self):
+        self.add_cloud_voice(baseline_style=self.BASELINE)
+        service = self.make_service()
+        wav = service.synthesize(text="站住。", voice_key=MANAGED_KEY)
+        self.assertGreater(len(wav), 44)
+        self.assertEqual(self.client.calls[0]["style"], self.BASELINE)
+        # the baseline is a direction, never spoken material
+        self.assertEqual(self.client.calls[0]["text"], "站住。")
+
+    def test_delivery_overrides_the_baseline_verbatim(self):
+        self.add_cloud_voice(baseline_style=self.BASELINE)
+        service = self.make_service()
+        service.synthesize(text="站住。", voice_key=MANAGED_KEY, delivery="closer, whispered")
+        # no prefix added, nothing normalized (Addendum A2 verbatim rule)
+        self.assertEqual(self.client.calls[0]["style"], "closer, whispered")
+
+    def test_asset_without_a_baseline_keeps_the_original_behaviour(self):
+        self.add_cloud_voice()  # no baseline_style field at all
+        service = self.make_service()
+        service.synthesize(text="站住。", voice_key=MANAGED_KEY)
+        self.assertEqual(self.client.calls[0]["style"], "")
+
+    def test_unusable_baseline_shape_is_refused_before_the_provider(self):
+        self.add_cloud_voice(baseline_style=7)
+        service = self.make_service()
+        with self.assertRaises(EngineUnavailable):
+            service.synthesize(text="站住。", voice_key=MANAGED_KEY)
+        self.assertEqual(self.client.calls, [])
+
+    def test_wire_request_without_delivery_sends_the_baseline(self):
+        self.add_cloud_voice(baseline_style=self.BASELINE)
+        http = self.make_http_client(self.make_service())
+        response = http.post("/tts", json={"text": "站住。", "voice_key": MANAGED_KEY})
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(self.client.calls[0]["style"], self.BASELINE)
+
+
 class SinglePaidRenderTests(CloudTestCase):
     LONG_TEXT = ("这是一段足够长的文本，本地引擎会把它切成很多段；" * 12).strip()
 

@@ -9,7 +9,9 @@ manifest without an explicit ``--force``:
 
 ``--preflight`` spends exactly one provider render proving that the current key can actually
 speak through that reference before anything is registered; it prints sizes and seconds,
-never key material.
+never key material. ``--baseline-style-file`` stores the asset's default style (read
+verbatim; use ``--baseline-prefix`` for an explicit prefix such as ``"Style: "``) -- no
+prefix is ever implied.
 """
 from __future__ import annotations
 
@@ -42,17 +44,39 @@ def build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="spend one provider render proving the key can speak this reference",
     )
+    parser.add_argument(
+        "--baseline-style-file",
+        type=Path,
+        default=None,
+        help="file holding the asset's default style (stored verbatim, minus surrounding whitespace)",
+    )
+    parser.add_argument(
+        "--baseline-prefix",
+        default="",
+        help="string prepended to the baseline file's content (e.g. 'Style: '); explicit on purpose",
+    )
     parser.add_argument("--force", action="store_true", help="replace an existing manifest")
     return parser
 
 
 def main(argv: list[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
+    baseline = ""
+    if args.baseline_style_file is not None:
+        if not args.baseline_style_file.is_file():
+            print(f"FAIL baseline style file not found: {args.baseline_style_file}")
+            return 2
+        content = args.baseline_style_file.read_text(encoding="utf-8").strip()
+        if not content:
+            print(f"FAIL baseline style file is empty: {args.baseline_style_file}")
+            return 2
+        baseline = args.baseline_prefix + content
     asset = voices.VoiceAsset(
         key=args.key,
         display_name=args.display_name or args.key,
         engine="gemini",
         cloud_voice={"kind": args.kind, "value": args.value},
+        baseline_style=baseline,
     )
     try:
         kind, value = voices.cloud_voice_ref(asset)
@@ -72,10 +96,10 @@ def main(argv: list[str] | None = None) -> int:
 
     try:
         target = voices.save_cloud_voice(asset, force=args.force)
-    except FileExistsError as exc:
+    except (FileExistsError, ValueError) as exc:
         print(f"FAIL {exc}")
         return 1
-    print(f"registered {asset.key} (kind={kind}) -> {target}")
+    print(f"registered {asset.key} (kind={kind}, baseline_style={len(asset.baseline_style)} chars) -> {target}")
     return 0
 
 

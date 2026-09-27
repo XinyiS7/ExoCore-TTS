@@ -14,6 +14,12 @@ rules shape everything here, both frozen by Plan/0004:
 The provider SDK and the API key are only touched inside ``load`` -- never at daemon
 start-up -- so a machine without the cloud dependency or the key keeps serving the local
 engine while the cloud asset fails closed with ``engine_unavailable``.
+
+Style semantics (Addendum A2, verbatim rule): a non-empty ``delivery`` is handed to the
+provider exactly as given -- no prefixing, no normalization. With no ``delivery``, the
+asset's own ``baseline_style`` speaks for it (some measured voices are only synthesizable
+with a style present); an asset without a baseline keeps the original behaviour and sends
+no style at all.
 """
 from __future__ import annotations
 
@@ -76,6 +82,8 @@ class GeminiBackend:
             raise EngineUnavailable(
                 f"voice {asset.key!r} has no usable cloud voice reference"
             ) from exc
+        if not isinstance(asset.baseline_style, str):
+            raise EngineUnavailable(f"voice {asset.key!r} has an unusable baseline style")
 
     def load(self) -> CloudClientHandle:
         """Build the lightweight provider client; a missing SDK or key fails closed here."""
@@ -98,8 +106,11 @@ class GeminiBackend:
     ) -> AudioResult:
         kind, value = voices.cloud_voice_ref(asset)
         reference = {"voice": value} if kind == "id" else {"prebuilt": value}
+        # Verbatim rule: a non-empty delivery crosses this seam untouched. Only when the
+        # caller sent none does the asset's own baseline style speak for it.
+        style = delivery if delivery else asset.baseline_style
         try:
-            data = model.client.render(text, style=delivery or "", **reference)
+            data = model.client.render(text, style=style, **reference)
         except cloud.CloudError as exc:
             # Already secret-scrubbed: the log gets the finding, the wire gets a code only.
             logger.error("gemini render failed: %s", exc)

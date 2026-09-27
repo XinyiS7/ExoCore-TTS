@@ -120,15 +120,20 @@ daemon 的 backend registry 现在有两个引擎：`voxcpm2`（本地克隆）�
 
 ```bash
 E:/Miniconda3/envs/voxcpm_runtime/python.exe tools/register_cloud_voice.py \
-    --key sandro_gemini_v1 --kind name --value "<声线名或资源 id>" --preflight
+    --key sandro_gemini_v1 --kind id --value "<provider voice id>" \
+    --baseline-style-file tools/cloud/prompts/ale.txt --baseline-prefix "Style: "
 ```
 
 - `--preflight` 花**恰好一次** provider render，先证明当前 key 能访问该引用，再登记；访问失败
   就停下报错（该请求回 `503 engine_unavailable`）——**不会** fallback 到别的声线，也不会自动
-  新建一个；
+  新建一个。若同一串已有真实渲染证据，可跳过 `--preflight`（实证后只登记，不重复花钱）；
+- **基线风格**：`--baseline-style-file` + `--baseline-prefix` 把该声线的**默认风格**存进资产
+  （内容逐字存储，前缀必须显式给出——backend 永不替你补前缀）。请求带 `delivery` 时**逐字覆盖**
+  基线；两者都没有就不发 style（与引入基线前的行为完全一致）。实测口径：有的云端声线**只在带风格时
+  才能合成**，所以这类资产必须带一条基线；
 - 服务端不变量：**一个 HTTP 请求 = 恰好一次 provider render**（云端不分段、不重试）；`delivery`
-  一对一传给 provider 的 style（空白等价不传），provider 侧失败回 `500 synthesis_failed`，
-  HTTP body 里永远只有错误码；
+  非空时**逐字**传给 provider 的 style，provider 侧失败回 `500 synthesis_failed`，HTTP body 里
+  永远只有错误码；
 - 依赖走本服务自己的 extras（`pip install -e ".[cloud]"`）；缺 SDK 或缺 key 时该引擎按 `503
   engine_unavailable` 失败关闭，本地 `voxcpm2` 与普通朗读完全不受影响。
 
