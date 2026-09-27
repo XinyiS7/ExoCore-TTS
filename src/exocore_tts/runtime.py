@@ -13,6 +13,15 @@ model. The runtime is also the only place that decides to load or evict a model:
 
 The published ``state`` and the model reference are always mutated together under one lock:
 there is no window in which ``/health`` can report ``ready`` while the reference is empty.
+
+Thread ownership, for direct callers (the service, tests, future tooling): load and inference
+run only on this runtime's single worker thread, so ``run`` is the only way to touch a model;
+calling it from inside a work function is refused with ``RuntimeError`` instead of deadlocking
+on the queue it is blocking. Eviction is re-validated under the same lock request admission
+uses, and the heavy release happens either on the idle monitor's worker job or on whichever
+caller invokes ``evict_if_idle``/``close`` directly -- never concurrently with a request,
+because a model is released only once it is no longer referenced. ``state`` is a lock-only
+snapshot and is safe from any thread; ``close`` is idempotent and drains the worker.
 """
 from __future__ import annotations
 

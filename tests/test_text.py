@@ -89,6 +89,8 @@ class SegmentTextTests(unittest.TestCase):
         self.assertGreater(len(segments), 1)
         for segment in segments:
             self.assertLessEqual(units(segment), SEGMENT_UNIT_BUDGET)
+            self.assertEqual(set(segment.split()), {"word"})  # no word was cut in half
+        self.assertEqual(without_whitespace("".join(segments)), without_whitespace(text))
 
     def test_random_texts_never_lose_content_or_exceed_the_budget(self):
         rng = random.Random(20260927)
@@ -148,6 +150,28 @@ class WeightedBudgetTests(unittest.TestCase):
             segment_text("字" * 20 + "a" * 61), ["字" * 20 + "a" * 60, "a"]  # 121 units
         )
         self.assertEqual(segment_text("字" * 40 + "a"), ["字" * 40, "a"])
+
+    def test_punctuation_exactly_on_the_weighted_boundary(self):
+        # A mark sitting on the last admissible unit must be used as the cut: the head ends
+        # with its punctuation at exactly the budget, and the mark never rolls into the next
+        # segment (the pre-amendment failure mode for an off-by-one around the boundary).
+        clause = "字" * 39 + "；" + "字" * 30  # 39 x 3 + 3 = 120 units up to and including "；"
+        self.assertEqual(segment_text(clause), ["字" * 39 + "；", "字" * 30])
+        self.assertEqual(units(segment_text(clause)[0]), SEGMENT_UNIT_BUDGET)
+        comma = "字" * 39 + "，" + "字" * 30
+        self.assertEqual(segment_text(comma), ["字" * 39 + "，", "字" * 30])
+        latin = "x" * 119 + "," + "y" * 10  # 119 x 1 + 1 = 120 units up to and including ","
+        self.assertEqual(segment_text(latin), ["x" * 119 + ",", "y" * 10])
+        # Same shape at an explicitly chosen budget, so the rule is not tied to 120.
+        self.assertEqual(
+            segment_text("字" * 10 + "；" + "字" * 5, max_units=33),
+            ["字" * 10 + "；", "字" * 5],
+        )
+        for sample in (clause, comma, latin):
+            segments = segment_text(sample)
+            self.assertEqual("".join(segments), sample)
+            for segment in segments:
+                self.assertLessEqual(units(segment), SEGMENT_UNIT_BUDGET)
 
     def test_the_confirmed_f1_sentence_splits_into_two_bounded_segments(self):
         # The 68-character sentence from the F-01 probe: one 16.6 s segment before, and it

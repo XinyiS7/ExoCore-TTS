@@ -12,6 +12,12 @@ the opaque `key`; it never learns how a voice is materialised.
 The manifest is the single authority for how a voice is spoken. Anything on the ExoCore side
 that binds a voice (M3) stores the key and points here; it must not mirror these fields as
 a second truth about the voice.
+
+Voice directories are written only by the managed tooling (`tools/cast.py` -> `freeze_voice`),
+so ``voice.json["key"]`` always equals the directory name it lives in. If factory assets ever
+become editable by hand outside that path, add an explicit manifest-key/directory-key mismatch
+rejection here -- before a key read from a manifest is trusted -- instead of assuming the
+tooling kept the two in sync.
 """
 from __future__ import annotations
 
