@@ -1,8 +1,8 @@
 # 0003 TTS Daemon — Review / Rewrite Handoff
 
-> Date: 2026-09-27  
-> Reviewer: gpt-5.6-sol / Solaire  
-> Target: `Plan/0003_tts_daemon.md`  
+> Date: 2026-09-27
+> Reviewer: gpt-5.6-sol / Solaire
+> Target: `Plan/0003_tts_daemon.md`
 > Status: **REFERENCE-ONLY / REWRITE CONTRACT SECTIONS BEFORE CONSTRUCTION**
 
 ## 0. Disposition
