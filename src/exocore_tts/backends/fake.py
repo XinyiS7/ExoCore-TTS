@@ -78,6 +78,9 @@ class FakeBackend:
     def supports_delivery(self) -> bool:
         return self.delivery_supported
 
+    def check_asset(self, asset: VoiceAsset) -> None:
+        """Nothing to check: the fake consumes no files and no device."""
+
     def load(self) -> FakeModel:
         with self._lock:
             self.load_count += 1

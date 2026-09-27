@@ -2,6 +2,7 @@
 
 Everything here runs on the fake backend: no torch, no CUDA, no network.
 """
+import logging
 import threading
 import time
 import unittest
@@ -10,6 +11,10 @@ from exocore_tts.backends.fake import FakeBackend
 from exocore_tts.errors import EngineUnavailable
 from exocore_tts.runtime import ModelRuntime, RuntimeState
 from exocore_tts.voices import VoiceAsset
+
+# This module injects load failures on purpose; keep the daemon's error log out of the
+# unittest output (the behaviour is asserted, the log text is not).
+logging.getLogger("exocore_tts").addHandler(logging.NullHandler())
 
 PROBE_ASSET = VoiceAsset(key="probe", display_name="Probe")
 

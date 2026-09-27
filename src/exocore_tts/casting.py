@@ -28,10 +28,11 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Sequence
 
+from exocore_tts import voxcpm
 from exocore_tts.config import candidate_root
+from exocore_tts.voxcpm import DEFAULT_CFG, DEFAULT_TIMESTEPS, MODEL_ID
 from exocore_tts.voices import VoiceAsset, describe_clip, list_voices, save_voice, validate_key
 
-MODEL_ID = "openbmb/VoxCPM2"
 MANIFEST_NAME = "manifest.json"
 SCHEMA_VERSION = 1
 
@@ -39,8 +40,6 @@ MODE_DESIGN = "design"
 MODE_CLONE = "clone"
 MODES = (MODE_DESIGN, MODE_CLONE)
 
-DEFAULT_CFG = 2.0
-DEFAULT_TIMESTEPS = 10
 DEFAULT_SEED_BASE = 1000
 # Measured on the RTX 3060 Ti against ~6.8 GB usable VRAM: 94 chars peaked at ~6.4 GB reserved.
 DEFAULT_MAX_CHARS = 120
@@ -230,23 +229,6 @@ class Manifest:
         os.replace(tmp, self.path)
 
 
-def _load_model(model_id: str = MODEL_ID, device: str | None = None):
-    """Load VoxCPM2 once per batch. Heavy: torch/voxcpm are imported here and nowhere else."""
-    import torch
-    from voxcpm import VoxCPM
-
-    if device is None and not torch.cuda.is_available():
-        raise RuntimeError(
-            "CUDA is not available in this interpreter; run casting with the service's own env "
-            "(E:/Miniconda3/envs/voxcpm_runtime/python.exe)"
-        )
-    model = VoxCPM.from_pretrained(model_id, load_denoiser=False, device=device)
-    sample_rate = int(
-        getattr(model, "sample_rate", getattr(getattr(model, "tts_model", None), "sample_rate", 48000))
-    )
-    return model, sample_rate
-
-
 def write_wav_atomic(target: Path, samples, sample_rate: int) -> None:
     """Write a WAV through a `.tmp` sibling and publish it atomically.
 
@@ -260,43 +242,23 @@ def write_wav_atomic(target: Path, samples, sample_rate: int) -> None:
     os.replace(tmp, target)
 
 
-def _synthesize(model, spec: CandidateSpec, *, sample_rate: int, target: Path) -> dict:
-    """Synthesize one candidate to `target`; returns the measured facts."""
-    import torch
+def _synthesize(loaded: voxcpm.LoadedModel, spec: CandidateSpec, *, target: Path) -> dict:
+    """Synthesize one candidate to `target`; returns the measured facts.
 
-    torch.manual_seed(spec.seed)
-    if torch.cuda.is_available():
-        torch.cuda.manual_seed_all(spec.seed)
-        torch.cuda.reset_peak_memory_stats()
-
-    kwargs = {
-        "text": spec.model_text,
-        "cfg_value": spec.cfg_value,
-        "inference_timesteps": spec.inference_timesteps,
-    }
-    if spec.reference_wav:
-        kwargs["reference_wav_path"] = spec.reference_wav
-        if spec.prompt_text:
-            # Ultimate cloning: same clip as prompt + its transcript raises similarity.
-            kwargs["prompt_wav_path"] = spec.reference_wav
-            kwargs["prompt_text"] = spec.prompt_text
-
-    started = time.perf_counter()
-    with torch.inference_mode():
-        wav = model.generate(**kwargs)
-    infer_s = time.perf_counter() - started
-
-    write_wav_atomic(target, wav, sample_rate)
-
-    audio_s = round(len(wav) / sample_rate, 3)
-    peak_mb = round(torch.cuda.max_memory_allocated() / (1024 ** 2), 1) if torch.cuda.is_available() else 0.0
-    return {
-        "infer_s": round(infer_s, 2),
-        "audio_s": audio_s,
-        "rtf": round(infer_s / audio_s, 3) if audio_s > 0 else 0.0,
-        "peak_allocated_mb": peak_mb,
-        "sample_rate": sample_rate,
-    }
+    The generation itself lives in `exocore_tts.voxcpm` (shared with the daemon); this
+    function keeps casting's responsibility: the candidate file and its manifest facts.
+    """
+    samples, stats = voxcpm.generate(
+        loaded,
+        text=spec.model_text,
+        cfg_value=spec.cfg_value,
+        inference_timesteps=spec.inference_timesteps,
+        seed=spec.seed,
+        reference_wav=spec.reference_wav,
+        prompt_text=spec.prompt_text,
+    )
+    write_wav_atomic(target, samples, loaded.sample_rate)
+    return stats
 
 
 def run_batch(
@@ -330,15 +292,15 @@ def run_batch(
 
     print("loading model (this is the slow part, once per batch) ...", flush=True)
     load_started = time.perf_counter()
-    model, sample_rate = _load_model(model_id, device)
+    loaded = voxcpm.load_model(model_id, device)
     load_s = round(time.perf_counter() - load_started, 2)
-    print(f"model ready in {load_s}s  sample_rate={sample_rate}")
+    print(f"model ready in {load_s}s  sample_rate={loaded.sample_rate}")
 
-    import torch
+    torch = loaded.torch
 
     manifest.set_run_info(
         model_id=model_id,
-        sample_rate=sample_rate,
+        sample_rate=loaded.sample_rate,
         load_s=load_s,
         torch=torch.__version__,
         cuda=torch.version.cuda,
@@ -350,7 +312,7 @@ def run_batch(
         target = batch_dir / spec.filename
         print(f"[{position}/{len(pending)}] {spec.candidate_id} seed={spec.seed} {spec.line[:36]!r}", end=" ", flush=True)
         try:
-            stats = _synthesize(model, spec, sample_rate=sample_rate, target=target)
+            stats = _synthesize(loaded, spec, target=target)
         except Exception:
             print("FAILED")
             print(f"\nStopped after {written} candidate(s). {manifest.path} already records them;")

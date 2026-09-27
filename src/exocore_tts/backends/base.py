@@ -40,6 +40,15 @@ class Backend(Protocol):
         service refuses the request instead of silently dropping the direction.
         """
 
+    def check_asset(self, asset: VoiceAsset) -> None:
+        """Cheap pre-admission check of everything this engine needs from the asset.
+
+        Runs before the model is loaded and before any GPU time is reserved, so a damaged
+        asset is refused without paying for a load. Raise `EngineUnavailable` for a broken
+        manifest or a missing/unreadable reference clip; returning normally means the
+        asset is usable. Backends that need no local files answer with a no-op.
+        """
+
     def load(self) -> Any:
         """Load the heavy model and return the handle the runtime will own.
 

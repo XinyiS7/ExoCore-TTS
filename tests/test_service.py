@@ -8,12 +8,14 @@ import os
 import tempfile
 import unittest
 from pathlib import Path
+from unittest import mock
 
 import soundfile as sf
 
-from exocore_tts import voices
+from exocore_tts import voices, voxcpm
 from exocore_tts.backends.base import AudioResult
 from exocore_tts.backends.fake import FakeBackend
+from exocore_tts.backends.voxcpm2 import VoxCpm2Backend
 from exocore_tts.errors import (
     DeliveryUnsupported,
     EngineUnavailable,
@@ -46,6 +48,9 @@ class StubBackend:
 
     def supports_delivery(self):
         return True
+
+    def check_asset(self, asset):
+        return None
 
     def load(self):
         return object()
@@ -250,6 +255,40 @@ class StructureGateTests(ServiceTestCase):
         )
         with self.assertRaises(SynthesisFailed):
             self.run_with_backend(backend, text="第一句。第二句。")
+
+
+class VoxCpm2ServiceTests(ServiceTestCase):
+    """The real engine class wired through the service, still without touching the GPU."""
+
+    def make_vox_service(self):
+        service = TtsService(
+            {"voxcpm2": VoxCpm2Backend()}, max_text_chars=60, idle_unload_seconds=0.0
+        )
+        self.addCleanup(service.close)
+        return service
+
+    def write_reference(self, key):
+        sf.write(
+            str(self.root / key / voices.DEFAULT_REFERENCE_CLIP),
+            [0.0] * 24000,
+            24000,
+            format="WAV",
+        )
+
+    def test_missing_reference_clip_fails_before_any_model_load(self):
+        service = self.make_vox_service()
+        voice = self.add_voice("naked", engine="voxcpm2")
+        with mock.patch.object(voxcpm, "load_model", side_effect=AssertionError("must not load")):
+            with self.assertRaises(EngineUnavailable):
+                service.synthesize(text="你好。", voice_key=voice)
+
+    def test_delivery_is_refused_before_any_model_load(self):
+        service = self.make_vox_service()
+        voice = self.add_voice("voiced", engine="voxcpm2")
+        self.write_reference(voice)
+        with mock.patch.object(voxcpm, "load_model", side_effect=AssertionError("must not load")):
+            with self.assertRaises(DeliveryUnsupported):
+                service.synthesize(text="你好。", voice_key=voice, delivery="放慢一点")
 
 
 class HealthStateTests(ServiceTestCase):

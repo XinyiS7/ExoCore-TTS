@@ -1,6 +1,7 @@
 """HTTP contract: the three accepted fields, bearer auth, error bodies, health, lifecycle."""
 import io
 import json
+import logging
 import os
 import tempfile
 import threading
@@ -17,6 +18,9 @@ from exocore_tts.backends.fake import FakeBackend
 from exocore_tts.config import ConfigError, DaemonConfig, load_daemon_config
 from exocore_tts.server import create_app
 from exocore_tts.service import TtsService
+
+# Injected load failures log on purpose; test output stays readable without them.
+logging.getLogger("exocore_tts").addHandler(logging.NullHandler())
 
 
 def wait_for(predicate, timeout: float = 3.0) -> bool:

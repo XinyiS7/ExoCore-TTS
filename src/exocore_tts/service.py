@@ -87,6 +87,7 @@ class TtsService:
         backend = self._backends.get(asset.engine)
         if backend is None:
             raise EngineUnavailable(f"no backend serves engine {asset.engine!r}")
+        backend.check_asset(asset)  # cheap, and it happens before any GPU load
         if clean_delivery and not backend.supports_delivery():
             raise DeliveryUnsupported(f"engine {backend.engine!r} cannot implement delivery")
 
