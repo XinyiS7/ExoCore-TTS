@@ -9,14 +9,9 @@ The kit stays engine-agnostic on purpose: `engine` names which backend should co
 asset, and `generation_defaults` carries backend-specific knobs. ExoCore only ever refers to
 the opaque `key`; it never learns how a voice is materialised.
 
-Mapping to ExoCore's `VoiceProfile` (Django side, for whoever binds a preset):
-
-    VoiceProfile.name                 <- key
-    VoiceProfile.display_name         <- display_name
-    VoiceProfile.engine               <- engine
-    VoiceProfile.baseline_instruction <- baseline_instruction
-    VoiceProfile.generation_defaults  <- generation_defaults
-    VoiceProfile.reference_audio_path <- local hint only; never travels on the wire
+The manifest is the single authority for how a voice is spoken. Anything on the ExoCore side
+that binds a voice (M3) stores the key and points here; it must not mirror these fields as
+a second truth about the voice.
 """
 from __future__ import annotations
 
