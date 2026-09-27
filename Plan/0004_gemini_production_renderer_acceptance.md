@@ -95,4 +95,4 @@
 - 「前缀是否必要」不单独渲染验证（见裁决 1）。
 - 授权：+6（总 ≤14）超出既有授权，**需 Alicia 追加同意**（已列入拍板项）。
 
-**Minor**：key 来源在探针记录间不一致（probe #4 记 `ExoCore/.env`，前文记 `ExoCore-TTS/.env` 的 `GEM_TTS_KEY`）——CP-G2 正式执行前请固定唯一来源并写入 runbook。
+**Minor（已闭环）**：key 来源并非不一致——按「拥有目标声线的 project」选 key 是刻意设计（replacement 属 ExoCore 项目 → `ExoCore/.env` 的 `GEMINI_API_KEY`；'Ale 2.5 2' 属 TTS 项目 → `ExoCore-TTS/.env` 的 `GEM_TTS_KEY`）；唯一口径与注入方式已由 builder 写入 `Plan/0004_cp_g2_runbook.md`（`58aaecb`，不碰她的 .env）。
