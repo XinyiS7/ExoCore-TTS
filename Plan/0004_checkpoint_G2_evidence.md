@@ -7,6 +7,8 @@
 
 ## 1. 结论（probe #5，2026-09-27 23:5x）
 
+> **23:53 更新：真机轮 job 09 已停（短风格串 → 404）——读数与含义见 §7。预算 9/14。**
+
 **Alicia 选中的 `'Ale 2.5 2'`（`voice_oj0e4iyst73a`）可以经公开 API 合成**，条件是请求里
 **必须带 `speech_metadata(style=…)`**（即播放器那份导出代码的写法）：
 
@@ -86,3 +88,18 @@ name 放进 voice= 槽            : 400（invalid argument）
 未登记资产、未创建/删除 provider 声线、未把任何 fallback 写进代码或配置、未打印任何 key、
 未消耗首轮语料、未触碰 `.gitignore` 与 `ai_studio_code.py`。probe #4（选项 C）与 #5 均在 Alicia
 明示授权（"c可以，测一下吧"）与授权预算（≤8）内执行。
+
+## 7. 真机轮（runbook §3）—— job 09 **STOPPED**（2026-09-27 23:53）
+
+- 唯一一次请求：`09_zh_Bleg_delivery`（中文 19 字 + `delivery` = `"Style: "` + §6 片段，**441 字符**）
+  → daemon 侧 provider `404 NOT_FOUND`（the voice was not found … no permission）→ port 契约回
+  `500 synthesis_failed`；按 runbook **立即停止**，其余 5 条未发。
+- 预算：**9/14**；daemon 已停、端口已释放、显存未动（无 GPU 参与）。
+- 读数：**该声线只有在 style 是"整段设计文本"形态时才被解析**（probe #5 = `"Style: "` + ale.txt 全文
+  **1266 字符** → 200；441 字符片段 → 404）。**confound（诚实标注）**：两次实验除 style 内容外，正文也
+  不同（#5 = `"Preflight."`，#9 = 中文）——用 job 10（中文 + 基线 = 全文）可在 **1 次渲染**内隔离。
+- **结构含义（重要）**：wire 的 `delivery` 上限 **500 字符** < 解析所需 **1266 字符** ⇒ 对这条声线，
+  **"请求级风格覆盖"在当前契约下不可行**；可行的产品形态是「**基线（整段设计文本）默认、无覆盖**」——
+  即"她以被设计时的语气说多语种台词"。G-03 / A-B 的交付形态据此需要 plan owner 重新落笔（冻结门文字不动）。
+- 已登记资产保持正确：`voices/sandro_gemini_v1/voice.json` 的 `baseline_style` = 1266 字符（与 probe #5 同串）。
+- 产物：`Plan/Acceptance_Probes/tts_gemini_cp_g2_render/{run_matrix.py,render_results.json,daemon.log}`。
