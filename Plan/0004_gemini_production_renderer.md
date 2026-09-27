@@ -1,6 +1,6 @@
 # 0004 — Gemini production renderer（Gate-G）
 
-> **状态**：READY FOR CONSTRUCTION；只授权本计划的 ExoCore-TTS scope。真实 smoke 在 Alicia 完成 key / 原始 voice resource 配对前保持 HOLD。
+> **状态**：**PASS — Gate-G 全条件达成（2026-09-28）**。CP-G1（离线接线）先通过独立验收；CP-G2（真机能力门）在勘误后重跑并达标：五语言矩阵（zh/en/de/it/mixed）均 200、风格 A-B 与身份由 Alicia 听判通过（Addendum A6 工程面 PASS；A7 记录听判）。生产形态 = 受管云资产 `sandro_gemini_v1`（原始 `Ale 2.5 2`；基线风格默认 + `delivery` 逐字覆盖）。本计划的后续 `send_voice_msg` checkpoints 仍不随本计划开工。
 > **范围**：仅 `ExoCore-TTS`；不修改 ExoCore、ExoCore-Runtime 或 Desktop。
 > **产品授权**：Alicia — 2026-09-27；现阶段只完成 Gemini TTS production renderer，后续 `send_voice_msg` checkpoints 不随本计划开工。
 > **计划 / 独立验收 owner**：Solaire。

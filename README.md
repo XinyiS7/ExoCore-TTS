@@ -136,6 +136,11 @@ E:/Miniconda3/envs/voxcpm_runtime/python.exe tools/register_cloud_voice.py \
   永远只有错误码；
 - 依赖走本服务自己的 extras（`pip install -e ".[cloud]"`）；缺 SDK 或缺 key 时该引擎按 `503
   engine_unavailable` 失败关闭，本地 `voxcpm2` 与普通朗读完全不受影响。
+- **实测经验（2026-09-28）**：① 短风格串（≤500 字符，带 `"Style: "` 前缀）足以解析并驱动该声线，
+  每请求风格覆盖可行；② **key 必须来自拥有该声线的 project**——用错 project 的 key 会表现为
+  `404 not-found`，排查时先验 key（长度断言 + 免费 `voices.get` 预检，见
+  `Plan/0004_cp_g2_runbook.md` §8）；③ 基线风格里的 "unhurried/deliberate" 取向会让默认语速偏慢，
+  接口无种子（每次抽取不同），需要稳定节奏时用 `delivery` 约束。
 
 ## 里程碑
 
@@ -146,7 +151,7 @@ E:/Miniconda3/envs/voxcpm_runtime/python.exe tools/register_cloud_voice.py \
 | **M2** | `POST /tts` + `GET /health` 守护进程（`backends/fake` 用于契约测试 + `backends/voxcpm2` 真推理；按需加载、空闲卸载） | **M2 已通过独立实现验收**（`f9be708` / `Plan/0003_m2_independent_acceptance.md`：CP-A / CP-B / 真机收尾 / Amendment 01 均 PASS）：`668b463` + `a82f83a` + `b8930c3` + `fab2d9c`；非 GPU 测试 159/159 已由 `f9be708` 独立复现，真机收尾数据仍是 builder 证据（经 verdict 引用接受）；delivery 产品门已收口（未通过 → 本地固定 `422`）；Gate-0 的 PASS 只覆盖契约 / 文档一致性，与实现 verdict 不混读 |
 | **M3** | ExoCore 适配器改 key-based + `base_url` 配置化 + 区分「冷启动中」与「服务离线」（跨仓计划落 `ExoCore/Plan/`） | 后端适配切片已提交（ExoCore `fb3b7bed` 薄客户端接线 + `428b609f` voice binding）；剩余：Desktop 配套 + 真实 `:8769` 联调 + 独立 CP-B 最终裁决 |
 | **M4** | 工具侧 `send_voice_msg`（落库即开始合成）+ 前端独立语音条 | 待施工 |
-| **CP-G1** | 生产云端引擎接线：`engine = "gemini"` backend + 受管云资产 + 登记工具 +「一请求一次付费渲染」（`Plan/0004_gemini_production_renderer.md`） | 离线接线已落地（builder 证据，待独立验收）；Gate-G 真机能力门（CP-G2，需 key 与原始 voice 配对）**未跑，不声称 PASS** |
+| **CP-G1 / CP-G2（Gate-G）** | 生产云端引擎：`engine = "gemini"` backend + 受管云资产（`sandro_gemini_v1` = 原始 `Ale 2.5 2`）+ 登记工具 +「一请求一次付费渲染」+ 基线风格默认 / `delivery` 逐字覆盖（`Plan/0004_gemini_production_renderer.md`） | **PASS（独立验收 + 听判，2026-09-28）**：离线接线 193/193；五语言真机矩阵（zh/en/de/it/mixed）全部 200；风格 A-B（基线 vs 短风格）与身份、吐字均已过；证据 = `Plan/0004_checkpoint_G1_evidence.md` / `_G2_evidence.md` / `0004_gemini_production_renderer_acceptance.md`（A1–A7） |
 
 ## 已裁决口径（Alicia，2026-09-26）
 
