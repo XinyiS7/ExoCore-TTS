@@ -1,9 +1,8 @@
-"""CP-G2 live round (runbook §3 / Addendum A3): baseline samples against the running daemon.
+"""CP-G2 live round (runbook §3 / Addendum A5): the remaining matrix languages.
 
-Job 10 is the isolated confound check (Chinese + the asset baseline: same style string as
-probe #5, different text) and doubles as the Chinese matrix sample; 11-14 are the remaining
-languages. The first failure stops the round and writes what happened; nothing retries.
-The B leg (job 09) ran once and returned 404; pass --with-b-leg to reproduce it.
+Step 0 is the free access gate (key length + `voices.get`) that every cloud round must pass
+before spending a render; then zh is already delivered, so this round runs en/de/it/mixed.
+One request per language, first failure stops.
 """
 import hashlib
 import io
@@ -17,6 +16,10 @@ import soundfile as sf
 
 OUT = Path(__file__).resolve().parent
 REPO = OUT.parents[2]
+sys.path.insert(0, str(REPO / "src"))
+
+from exocore_tts import cloud, voices  # noqa: E402
+
 ALE = (REPO / "tools/cloud/prompts/ale.txt").read_text(encoding="utf-8").strip()
 VOICE_KEY = "sandro_gemini_v1"
 URL = "http://127.0.0.1:8769/tts"
@@ -54,7 +57,21 @@ def post(text: str, delivery: str):
         return response.status, response.read()
 
 
+def access_gate() -> None:
+    """Runbook step 0: prove the key this process resolves can see the voice -- free, no render."""
+    from google import genai
+
+    asset = voices.load_voice(VOICE_KEY)
+    kind, value = voices.cloud_voice_ref(asset)
+    key = cloud.read_api_key()
+    print(f"gate: key length {len(key)}, provider ref ({kind}) {value}")
+    client = genai.Client(api_key=key)  # keep a reference: a temporary client can be GC'd mid-call
+    got = client.voices.get(value)
+    print(f"gate: OK -> {got.model_dump().get('display_name')!r}")
+
+
 def run():
+    access_gate()
     style = b_leg_style()
     b_leg = ("09_zh_Bleg_delivery", ZH, style)
     # A5 round (Addendum A5 / re-ruling): remaining matrix languages; zh is already delivered.

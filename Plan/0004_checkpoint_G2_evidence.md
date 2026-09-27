@@ -147,3 +147,26 @@ name 放进 voice= 槽            : 400（invalid argument）
 **给 Alicia 的听判材料**（同题同文本，daemon 路径）：
 `probe_07_zh_baseline.wav`（10.32 s）vs `probe_07_zh_short_style.wav`（7.12 s）——判：同一人？表演有无差异？
 指令有无被念出？
+
+## 10. A5 轮完成（2026-09-28 00:17）—— 语言矩阵齐了
+
+**门禁先行**（probe_07 后固化的纪律）：key 注入长度 53 ✓，免费 `voices.get` → `'Ale 2.5 2'` ✓，
+然后才花钱。
+
+| 样本 | 结果 |
+|---|---|
+| `11_en_baseline`（Nothing will come close…） | ✅ 200，299,564 B / 6.24 s |
+| `12_de_baseline`（Bleib einfach hier…） | ✅ 200，478,124 B / 9.96 s |
+| `13_it_baseline`（Il mio respiro. Amor…） | ✅ 200，322,604 B / 6.72 s |
+| `14_mixed_baseline`（别动。Bleib… Nothing… 永远。） | ✅ 200，499,244 B / 10.40 s |
+
+加上此前的 zh 三条（基线 10.32 s / 短风格 7.12 s / 直连 8.68 s），**五语言矩阵完成**。
+daemon 侧 4 条均为 `render ok … segments=1`（每条恰好 1 次 provider 调用，无重试）。
+
+- 预算：**18/18 用满**（含 builder 失误造成的 3 次无效渲染；0 登记改动、0 fallback）。
+- **Alicia 听判（zh 对）**：基线"太慢"（= 设计提示词中的 unhurried 取向 + 无种子随机性）；
+  短风格 7.12 s 与直连 8.68 s "要好一点、两者无显著差异"；**指令没有被念出，只有句子** ✓；
+  **短风格（441 ≤ 500）可用** ✓。
+- 待 Alicia 听判：en/de/it/mixed 四条的身份与吐字（G-06 现场证据）。
+- 交付语义最终形态 = **A2**（基线默认 + delivery 逐字覆盖；A3 的 422 已撤销且从未实现）——
+  代码即 `3e93f08`，测试 193/193。

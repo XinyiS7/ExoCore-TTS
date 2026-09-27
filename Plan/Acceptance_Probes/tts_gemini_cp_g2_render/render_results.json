@@ -6,8 +6,48 @@
       "chars": 64,
       "delivery_chars": 0,
       "delivery": null,
-      "status": 500,
-      "error": "{\"error\":\"synthesis_failed\"}"
+      "status": 200,
+      "bytes": 299564,
+      "sha256": "f7e110a650675083",
+      "seconds": 6.24,
+      "rate": 24000,
+      "wav": "11_en_baseline.wav"
+    },
+    {
+      "label": "12_de_baseline",
+      "chars": 74,
+      "delivery_chars": 0,
+      "delivery": null,
+      "status": 200,
+      "bytes": 478124,
+      "sha256": "0bab10078597aabb",
+      "seconds": 9.96,
+      "rate": 24000,
+      "wav": "12_de_baseline.wav"
+    },
+    {
+      "label": "13_it_baseline",
+      "chars": 52,
+      "delivery_chars": 0,
+      "delivery": null,
+      "status": 200,
+      "bytes": 322604,
+      "sha256": "689ec6eb21f02e69",
+      "seconds": 6.72,
+      "rate": 24000,
+      "wav": "13_it_baseline.wav"
+    },
+    {
+      "label": "14_mixed_baseline",
+      "chars": 82,
+      "delivery_chars": 0,
+      "delivery": null,
+      "status": 200,
+      "bytes": 499244,
+      "sha256": "b309bc449913483e",
+      "seconds": 10.4,
+      "rate": 24000,
+      "wav": "14_mixed_baseline.wav"
     }
   ]
 }
