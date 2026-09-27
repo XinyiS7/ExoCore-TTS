@@ -1,11 +1,11 @@
 # 0003 — TTS 守护进程（M2，重写版）
 
-> **状态**：**CP-A / CP-B 实现已提交，仍在等待独立实现验收**。CP-A `668b463`（非 GPU 地基：契约层 / 编排 / 单 worker 生命周期 / 分段 / fake 替身 / 启动门禁）与 CP-B `a82f83a`（`voxcpm.py` 共用低层入口 + `backends/voxcpm2.py` 真实引擎 + casting 零回归）的实现已入库，builder 证据包 `Plan/0003_checkpoint_A_acceptance.md` / `_B_` 已就绪，**尚无独立实现验收结论**（本节提到的 Gate-0 PASS 只覆盖契约与文档一致性，不可读作实现验收）。**已收口的 product gate**：§8 第 5 步 delivery 探针已执行（`0a7f19c`，证据 `Plan/0003_delivery_probe_result.md`）——Alicia 听判**未通过**，按 §3 失败分支固定为 `supports_delivery=False` + 非空 `delivery` 返回 `422 delivery_unsupported`；这是该门的完成结果，不是开放项，也不代表 M2 实现失败。**仍未完成**：第 6 步 `voices.py` 文档收尾、第 7 步真机冒烟剩余项（§9.2 步骤 4–8）。本文件继续作为端口契约的唯一权威；实现事实以三个 evidence 文档为准。
+> **状态**：**M2 已通过独立实现验收**——`f9be708` / `Plan/0003_m2_independent_acceptance.md`：CP-A、CP-B、真机收尾与 Amendment 01 均 **PASS**。已接受实现：CP-A `668b463`（非 GPU 地基：契约层 / 编排 / 单 worker 生命周期 / 分段 / fake 替身 / 启动门禁）、CP-B `a82f83a`（`voxcpm.py` 共用低层入口 + `backends/voxcpm2.py` 真实引擎 + casting 零回归）、`voices.py` 文档清理 `fab2d9c`、Amendment 01 `b8930c3`（分段改为脚本加权单位预算，§4.3 / §6 已同步重基线）。**两个 PASS 不可混读**：Gate-0（`cf7c053`）只是契约 / 文档一致性 verdict；独立实现 verdict 是 `f9be708`。**证据属性分开标注**：非 GPU 159/159 已由 `f9be708` **独立复现**（verdict 自己重跑）；`a345ef0` 的真机收尾数字仍是 Builder 证据——verdict 引用并接受，但未独立重跑。**已收口的 product gate**：§8 第 5 步 delivery 探针已执行（`0a7f19c`，证据 `Plan/0003_delivery_probe_result.md`）——Alicia 听判**未通过**，按 §3 失败分支固定为 `supports_delivery=False` + 非空 `delivery` 返回 `422 delivery_unsupported`；这是该门的完成结果，不是开放项，也不代表 M2 实现失败。**M2 闭项**：§8 第 9 / 10 项由 `f9be708` 结项；非阻塞后续项（不重开 M2）见 verdict 的 follow-ups。本文件继续作为端口契约的唯一权威；实现事实以 evidence 文档为准。
 > **范围**：仅 `ExoCore-TTS` 仓库。
 > **计划作者**：gpt-5.6-sol / Solaire
 > **Pruning review**：deepseek/deepseek-flash / Ecki
 > **依据**：已先读 `0003_review_handoff_solaire.md`，再把旧版 `0003_tts_daemon.md` 仅作为事实库；本计划依据当前源码、声音资产与既有测试独立重建。
-> **基线**：CP-B 时点非 GPU 测试 **151/151 OK**（65 个 casting/voices/verify 基线 + 86 新增，连跑 3 次稳定，不加载模型、不联网）；三条正式声音资产均为 `voxcpm2`，生成默认值为 cfg 3.5 / timesteps 16。
+> **基线**：CP-B 时点非 GPU 测试 **151/151 OK**（65 个 casting/voices/verify 基线 + 86 新增，连跑 3 次稳定，不加载模型、不联网）；Amendment 01 后为 **159/159**（已由 `f9be708` 独立复现）。三条正式声音资产均为 `voxcpm2`，生成默认值为 cfg 3.5 / timesteps 16。
 
 ## 1. 目标与验收边界
 
@@ -118,10 +118,10 @@ M2 没有运行时消费者需要它：ExoCore 已保存所选 opaque key，本�
 
 ### 2.4 调用方义务与 M3 接线门禁
 
-- 现有 ExoCore `VoxCPM2Runtime` 仍发送 `profile_name/engine/version/reference_audio_path/baseline_instruction`，且固定 10 秒 timeout；它与本契约**明确不兼容**。
-- M3 完成前不得仅把旧适配器的 `base_url` 指向 `:8769`；严格字段校验会正确返回 422，这不是 daemon 故障。
+- **历史 M3 基线（已被取代）**：旧 ExoCore `VoxCPM2Runtime` 曾发送 `profile_name/engine/version/reference_audio_path/baseline_instruction` 并固定 10 秒 timeout，与本契约**明确不兼容**；该基线已由 ExoCore `fb3b7bed`（薄客户端接线）+ `428b609f`（voice binding）取代。
+- 不要用“只把旧适配器的 `base_url` 指向 `:8769`”的方式接线：严格字段校验会正确返回 422，这不是 daemon 故障（历史提示；当前 ExoCore 已按 `fb3b7bed` 走薄客户端路径）。
 - ExoCore 必须在发请求前校验 `text` 与 `delivery` 上限：超限时在自己的 job/tool 边界明确失败并给安全提示，禁止静默截断，也不把可预防的 422 留给用户。
-- transport timeout 必须覆盖冷加载与该请求最坏渲染时间。**CP-B 真机实测**：冷加载 53.56 s、首个冷请求总耗时 73.88 s（`Plan/0003_checkpoint_B_acceptance.md`），**M3 的 timeout 预算按 ≥ 90 s 设计**。早期选角 bench 记录的 ≈ 42 s 属过时历史数据点，不再作为设计依据。调用方超时不会取消已经 admission/入队的 GPU 工作；超时后不得立即自动重试，否则会重复占用单 GPU 队列。
+- transport timeout 必须覆盖冷加载与该请求最坏渲染时间。**CP-B 真机实测**：冷加载 53.56 s、首个冷请求总耗时 73.88 s（`Plan/0003_checkpoint_B_acceptance.md`），**M3 的 timeout 预算按 ≥ 90 s 设计**。早期选角 bench 记录的 ≈ 42 s 属过时历史数据点，不再作为设计依据。调用方超时不会取消已经 admission/入队的 GPU 工作；超时后不得立即自动重试，否则会重复占用单 GPU 队列。**当前 ExoCore 实现默认**：`TTS_TRANSPORT_TIMEOUT_SECONDS=600`、`TTS_JOB_TIMEOUT_SECONDS=900`（启动校验强制 transport ≥ 90 s，且 job 必须覆盖 transport）；“不自动重试”不变。
 - 端口字段的唯一名称是 `delivery`；wire 上不出现 `style` / `emotion` / `seed` 等别名。ExoCore 侧产品面可以继续用别的名字（例如 `send_voice_msg` 的 `emotion`），但必须映射到本字段——不要为了对齐而在 ExoCore 侧改工具名，也不要在 wire 上加第二个名字。
 
 冷启动期间调用方可观察到的现象，及其唯一允许的解读（M3 必须按此实现，不得重新引入 `model_not_ready` 轮询协议）：
@@ -197,13 +197,13 @@ Backend 输入只包含工厂内部 `VoiceAsset`、一个文本段、可选 `del
 两个限制必须分开：
 
 - `EXOCORE_TTS_MAX_TEXT_CHARS=600`：可部署调整的整次请求安全上限，避免单请求无限占用队列；
-- `SEGMENT_MAX_CHARS=120`：代码常量，限制单次本地推理段，遵守当前 3060 Ti 显存实测边界。
+- `SEGMENT_UNIT_BUDGET=120`：代码常量，**脚本加权单位预算**＝单次本地推理段的显存与质量联合外沿（Amendment 01 / F-01）。每字符成本：CJK 码点（`U+3000–303F` / `U+3400–4DBF` / `U+4E00–9FFF` / `U+F900–FAFF` / `U+FF00–FFEF`）3 单位，其余码点 1 单位 ⇒ 中文 ≤40 字/段、纯拉丁维持 ≤120 字符/段；因每字符成本 ≥1，“字符数 ≤120”的外沿对所有输入自动成立（未放宽）。
 
 分段规则：
 
 - 优先在中、英、德常见句末标点及其尾随引号后切分；
 - 处理省略号与连续标点时不得生成空段或丢字符；
-- 单句仍超限时，优先回退到上限内最近空白；没有空白才硬切；
+- 单句仍超预算时，回退优先序（全部确定性）：预算内最近空白 → 从句标点（`；;：:`，切在标点之后）→ 逗号级标点（`，,、`，切在标点之后）→ 硬切（单位边界）；
 - 所有非分隔内容和原标点保持原顺序，分段器不改写文字；
 - 同一请求的 `delivery` 对每段一致生效；
 - 各段使用同一采样率/通道约束，以代码常量 `GAP_MS=250` 的静音连接；
@@ -265,7 +265,7 @@ cold -> loading -> ready
 | `EXOCORE_TTS_IDLE_UNLOAD_SECONDS` | `1800` | `0` 禁用；不得为负 |
 | `EXOCORE_TTS_MAX_TEXT_CHARS` | `600` | 必须为正；调用方也须预检 |
 
-`SEGMENT_MAX_CHARS=120`、`MAX_DELIVERY_CHARS=500` 与 `GAP_MS=250` 是 M2 代码常量，不扩张为日常环境配置。bearer 比较使用恒定时间比较（如 `secrets.compare_digest`）。
+`SEGMENT_UNIT_BUDGET=120`、`MAX_DELIVERY_CHARS=500` 与 `GAP_MS=250` 是 M2 代码常量，不扩张为日常环境配置。bearer 比较使用恒定时间比较（如 `secrets.compare_digest`）。
 
 启动硬门禁：**bind host 不是明确 loopback 地址时一律拒绝启动**；token 只是 loopback 上的额外保护，不能用来放宽网络边界。不能用一个可误解析的 host 名称假定安全。
 
@@ -308,10 +308,11 @@ tests/test_text.py
 src/exocore_tts/casting.py     ✅ 已落地（CP-B a82f83a）：内部实现下沉 `voxcpm`，CLI / manifest 不变
 src/exocore_tts/config.py      ✅ 已落地（CP-A 668b463）：daemon 配置 + 字面量 loopback 启动门禁
 pyproject.toml                 ✅ 已落地（CP-A）：daemon 入口 + dev extra（httpx）
-src/exocore_tts/voices.py      ⬜ 仍开放（归属 pane-3；committed 且 accepted 前不算完成）：删除“字段镜像到 Django VoiceProfile”的旧权威说明
+src/exocore_tts/voices.py      ✅ 已提交（`fab2d9c`，仅 docstring）：删除“字段镜像到 Django VoiceProfile”的旧权威说明
+src/exocore_tts/text.py        ✅ 已落地（CP-A）+ Amendment 01（`b8930c3`）：`SEGMENT_UNIT_BUDGET` 加权预算与标点优先回退
 ```
 
-`README.md` / `AGENTS.md` 属文档收尾：本计划冻结的契约摘要、里程碑状态与运行约束已在 Gate-0 文档修复中更新（Gate-0 只覆盖契约 / 文档一致性，不含实现验收；见 §8 第 6 步）。
+`README.md` / `AGENTS.md` 属文档收尾：契约摘要、里程碑状态与运行约束已在 Gate-0 文档修复中更新（Gate-0 只覆盖契约 / 文档一致性，不含实现验收）；Amendment 01 重基线见 §4.3 / §6。
 
 计划外新增（已记入验收包偏差表）：`src/exocore_tts/errors.py`（CP-A §5a）、`tests/test_voxcpm_backend.py`（CP-B §6b）。测试文件可按实现后的职责合并，禁止为了匹配文件清单制造空壳模块。不得修改三条已冻结 WAV，或无必要改写其 `voice.json`。
 
@@ -319,7 +320,7 @@ src/exocore_tts/voices.py      ⬜ 仍开放（归属 pane-3；committed 且 acc
 
 ## 8. 施工顺序与当前状态
 
-**步骤 1–5 已完成；CP-A / CP-B 独立实现验收仍待结论**：
+**步骤 1–8 已完成（含 Amendment 01 重基线）；整体由 `f9be708` 独立验收 PASS，M2 已闭项**：
 
 1. ✅ **契约地基**（CP-A `668b463`）：配置对象、稳定领域错误、backend 最小协议、fake backend；`/tts`、`/health`、鉴权与错误边界由 fake 固定。
 2. ✅ **文本与音频管线**（CP-A）：总量门禁、分段、静音拼接、客观结构校验。
@@ -327,18 +328,24 @@ src/exocore_tts/voices.py      ⬜ 仍开放（归属 pane-3；committed 且 acc
 4. ✅ **Vox 能力抽取**（CP-B `a82f83a`）：`voxcpm.py` 共用低层入口、`voxcpm2` backend 进生产 registry、casting 65 例零回归；builder 真机基本链路 smoke 记录（cold → loading → ready → WAV，加载期 `/health` 全程可响应；并发“只加载一次 / 推理串行”由非 GPU 用例钉住，真机未单独留档）。
 5. ✅ **delivery 门禁探测（已完成，未通过）**：按 §3 执行——探针 `0a7f19c` + `Plan/0003_delivery_probe_result.md`；Alicia 听判未通过，按失败分支固定 `supports_delivery=False` / `422 delivery_unsupported`。这是该门的完成结果，不是开放项，也不是 M2 实现失败。
 
-**仍未完成**：
+6. ✅ **文档收尾**：README 契约摘要 / 里程碑 / 单 worker 约束与 AGENTS 里程碑（Gate-0 + 本轮）；`voices.py` 旧 Django 镜像说明已删除（`fab2d9c`，仅 docstring，行为无变化）。
+7. ✅ **真机冒烟 §9.2 步骤 3–8**：已执行；仓库内证据 `Plan/0003_m2_smoke_closure_evidence.md`（`a345ef0`，Builder 证据；已由 `f9be708` 引用接受），步骤 1–2 见 `Plan/0003_checkpoint_B_acceptance.md` §5。“先区分代码缺陷与已知 commit/pagefile 环境不足”的排查顺序对后续真机操作继续适用。
+8. ✅ **Amendment 01 / F-01（分段上限）**：代码 `b8930c3` 落地 A1 加权预算 + A2 标点优先回退（非 GPU **159/159**，已由 `f9be708` 独立复现）；冻结计划文本随本轮文档同步重基线（§4.3 / §6）。
 
-6. ⬜ **文档收尾**：Gate-0 文档修复已更新 README 的契约摘要 / 里程碑 / 单 worker 约束与 AGENTS 里程碑；**仍开放**（归属 pane-3，committed 且 accepted 前不算完成）：`voices.py` 的旧 Django 镜像说明。
-7. ⬜ **真机冒烟剩余项**：§9.2 步骤 4–8（en/de 声线、多段长文本、idle 卸载、load 失败恢复）；真机失败先区分代码缺陷与已知 commit/pagefile 环境不足。
+**闭项（由 `f9be708` 结项）**：
 
-每个里程碑只修改本仓拥有的文件；M3/M4 未授权前不碰 ExoCore 或 Desktop。
+9. ✅ **Amendment 01 / F-01 的 focused recheck**（独立）：verdict 记录非 GPU 159/159、focused text 21/21 与边界探针均 PASS；A1/A2 范围照准。
+10. ✅ **CP-A / CP-B 与本轮收尾的独立最终验收结论**（Solaire）：`f9be708` = M2 实现验收 PASS；Gate-0 仍是契约 / 文档一致性 verdict，两者不混读。
+
+非阻塞后续项（不重开 M2）：见 `Plan/0003_m2_independent_acceptance.md` 的 follow-ups；本文件不复制。
+
+每个里程碑只修改本仓拥有的文件；M2 未触碰 ExoCore / Desktop，M3 由跨仓计划（`ExoCore/Plan/`）跟踪。
 
 ---
 
 ## 9. 验证目标（不冻结测试实现）
 
-> **当前状态**：§9.1 的各条要求已由 CP-A / CP-B 的实现与用例覆盖（非 GPU **151/151**）；决定性断言清单见两个 checkpoint 验收包 §4，本文件不复制证据。**实现验收本身仍待独立结论**（证据包 ≠ 验收结论）。delivery 产品门已按 §3 收口（未通过 → 本地固定拒绝，证据 `Plan/0003_delivery_probe_result.md`）。§9.2 的真机冒烟只完成了步骤 1–2（步骤 3 的并发由非 GPU 用例覆盖），步骤 4–8 仍待收口。
+> **当前状态**：§9.1 的各条要求已由 CP-A / CP-B 的实现与用例覆盖（非 GPU **159/159**，已由 `f9be708` 独立复现）；决定性断言清单见两个 checkpoint 验收包 §4，本文件不复制证据。**独立实现验收结论：`f9be708` PASS**（Gate-0 的 PASS 只覆盖契约 / 文档一致性，两者不混读）。delivery 产品门已按 §3 收口（未通过 → 本地固定拒绝，证据 `Plan/0003_delivery_probe_result.md`）。§9.2 真机冒烟的步骤 1–2 见 `Plan/0003_checkpoint_B_acceptance.md` §5，步骤 3–8 见 `Plan/0003_m2_smoke_closure_evidence.md`（`a345ef0`）——真机数字仍是 builder 证据（verdict 引用并接受，未独立重跑）。
 
 ### 9.1 自动化：不加载模型、不联网
 
@@ -349,7 +356,7 @@ src/exocore_tts/voices.py      ⬜ 仍开放（归属 pane-3；committed 且 acc
 - 成功结果是可读取的 `audio/wav`，fake backend 在相同请求 shape 下可替换真实 backend。
 - 无 `delivery` 只走声音基线；有 `delivery` 时 engine-neutral 字段抵达 backend；不支持时显式报错而非忽略。
 - bearer 开/关行为，以及任何 non-loopback bind 的启动拒绝（无论是否配置 token）。
-- 中英德标点、尾随引号、省略号、超长无标点文本的切分；不丢字、不乱序、每段不越界。
+- 中英德标点、尾随引号、省略号、超长无标点文本的切分；不丢字、不乱序、每段不越界（Amendment 01 后按加权单位预算判定）。
 - 多段音频按固定 gap 拼装；任一段失败不返回部分音频。
 - 非空/有限采样、采样率/通道与最终 WAV 的客观结构校验；调用方无法覆盖 seed。
 - 两个并发冷请求只触发一次 load，且推理不并发。
@@ -369,7 +376,7 @@ E:/Miniconda3/envs/voxcpm_runtime/python.exe -m unittest discover -s tests -v
 
 前置：确认系统空闲 commit ≥ 约 8GB；不足时先处理环境，不能把 `OSError 1455`/segfault 误判为 daemon 缺陷。
 
-验收步骤（**已完成：1–2 的真机 cold 链路与 health 时间线；步骤 3 的并发由非 GPU 用例钉住；待完成：4–8**）：
+验收步骤（**执行状态：1–2 见 `Plan/0003_checkpoint_B_acceptance.md` §5；3–8 已执行，证据 `Plan/0003_m2_smoke_closure_evidence.md`（`a345ef0`，builder 证据；已由 `f9be708` 引用接受）**）：
 
 1. 启动服务，`/health` 为 `cold`，无模型显存占用。
 2. 用 `sandro_v1` 发短中文冷请求；请求等待加载并最终返回 WAV；加载期间另一连接的 `/health` 可响应且为 `loading`。
@@ -379,6 +386,8 @@ E:/Miniconda3/envs/voxcpm_runtime/python.exe -m unittest discover -s tests -v
 6. 把 idle 阈值临时设为 60 秒，空闲后确认状态回 `cold` 且显存释放；在临界点提交请求，确认不会被陈旧卸载决定打断。
 7. 人为制造一次 loader 失败，确认状态回到可重试的 `cold`，恢复环境后下一请求能成功加载。
 8. 记录冷加载耗时、逐段推理耗时、RTF、段数和释放结果到验收记录；这些数据不进入公共 HTTP 契约。
+
+> **用户听判（证据，非裁决）**：EN / DE short 样本（`sandro_en_v1` / `sandro_de_v1`）已由 Alicia 人耳听过并判「没问题，现在不用纠结」。该判据只覆盖那两个留档样本，属用户听感验收证据——**不是独立实现验收，也不构成对任意文本 / 时长 / 声线的普遍质量保证**；步骤 5 的其余听判项不在本记录内。
 
 ---
 

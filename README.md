@@ -117,8 +117,8 @@ API key 只在调用时从 `GEMINI_API_KEY` 或 `ExoCore/.env` 现取：**不进
 |---|---|---|
 | **M1** | 仓库骨架 + 声音资产库 + 选角台（本文件描述的工具） | ✅ 已落地 |
 | **M1.5** | `register` 子命令（收外部参考音频）+ 资产体检 + 首条正式声线 `sandro_v1` | ✅ 已落地 |
-| **M2** | `POST /tts` + `GET /health` 守护进程（`backends/fake` 用于契约测试 + `backends/voxcpm2` 真推理；按需加载、空闲卸载） | **CP-A / CP-B 实现已提交，等待独立实现验收**：CP-A `668b463` + CP-B `a82f83a`，builder 证据包已就绪，非 GPU 测试 151/151；delivery 产品门已收口（探针未通过 → 本地固定 `422`）；剩余 `voices.py` 文档收尾、真机冒烟 §9.2 步骤 4–8 |
-| **M3** | ExoCore 适配器改 key-based + `base_url` 配置化 + 区分「冷启动中」与「服务离线」（跨仓计划落 `ExoCore/Plan/`） | 待施工 |
+| **M2** | `POST /tts` + `GET /health` 守护进程（`backends/fake` 用于契约测试 + `backends/voxcpm2` 真推理；按需加载、空闲卸载） | **M2 已通过独立实现验收**（`f9be708` / `Plan/0003_m2_independent_acceptance.md`：CP-A / CP-B / 真机收尾 / Amendment 01 均 PASS）：`668b463` + `a82f83a` + `b8930c3` + `fab2d9c`；非 GPU 测试 159/159 已由 `f9be708` 独立复现，真机收尾数据仍是 builder 证据（经 verdict 引用接受）；delivery 产品门已收口（未通过 → 本地固定 `422`）；Gate-0 的 PASS 只覆盖契约 / 文档一致性，与实现 verdict 不混读 |
+| **M3** | ExoCore 适配器改 key-based + `base_url` 配置化 + 区分「冷启动中」与「服务离线」（跨仓计划落 `ExoCore/Plan/`） | 后端适配切片已提交（ExoCore `fb3b7bed` 薄客户端接线 + `428b609f` voice binding）；剩余：Desktop 配套 + 真实 `:8769` 联调 + 独立 CP-B 最终裁决 |
 | **M4** | 工具侧 `send_voice_msg`（落库即开始合成）+ 前端独立语音条 | 待施工 |
 
 ## 已裁决口径（Alicia，2026-09-26）
@@ -131,7 +131,7 @@ API key 只在调用时从 `GEMINI_API_KEY` 或 `ExoCore/.env` 现取：**不进
 4. **`send_voice_msg` 的 UI 形态 = 独立语音条**（消息上第二个播放器，与正文朗读并存）。UI 要重新设计，但底层先做（M4）。
 5. **免冻结的声音资产进 git**（`voices/` 不 ignore）；候选池 `candidates/` 不进。
 
-M2 当前状态：**CP-A `668b463` + CP-B `a82f83a` 实现已提交**、builder 证据包已就绪，**仍等待独立实现验收**（Gate-0 的 PASS 只覆盖契约/文档一致性）；**delivery 产品门已收口**（探针 `0a7f19c` 未通过 → 本地固定 `422`）；**冷加载实测 53.56 s、首个冷请求 73.88 s**（见「环境」），M3 timeout 预算 ≥ 90 s；**空闲卸载默认 `EXOCORE_TTS_IDLE_UNLOAD_SECONDS=1800`**（`0` 表示不卸载；该默认值由 M2 计划裁定，最终仍待 Alicia 确认；真机 idle 卸载属待收口的冒烟）。ExoCore 侧现有 10 秒超时 + 60 秒假死阈值对冷启动与长文本都不够用，属于 M3 必须一起改的契约变更。
+M2 当前状态：**已通过独立实现验收**（`f9be708` / `Plan/0003_m2_independent_acceptance.md`：CP-A `668b463` + CP-B `a82f83a` + Amendment 01 `b8930c3`（分段改为脚本加权单位预算：中文 ≤40 字/段、纯拉丁 ≤120 字符/段）+ `voices.py` 文档清理 `fab2d9c`）；Gate-0 的 PASS 只覆盖契约 / 文档一致性，与实现 verdict 不混读；非 GPU 159/159 已由 `f9be708` 独立复现；真机收尾证据 `Plan/0003_m2_smoke_closure_evidence.md`（`a345ef0`）仍是 builder 证据（verdict 引用并接受，未独立重跑）；**delivery 产品门已收口**（探针 `0a7f19c` 未通过 → 本地固定 `422`）；**冷加载实测 53.56 s、首个冷请求 73.88 s**（见「环境」），M3 timeout 预算 ≥ 90 s；**空闲卸载默认 `EXOCORE_TTS_IDLE_UNLOAD_SECONDS=1800`**（`0` 表示不卸载；该默认值由 M2 计划裁定，最终仍待 Alicia 确认）。ExoCore 侧当前实现默认 `TTS_TRANSPORT_TIMEOUT_SECONDS=600` / `TTS_JOB_TIMEOUT_SECONDS=900`（启动校验强制 transport ≥ 90 s 且 job 覆盖 transport）；最终 CP-B 仍待上述 Desktop 配套与真实 `:8769` 联调。
 
 ## 环境
 
