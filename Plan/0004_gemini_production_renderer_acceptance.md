@@ -171,3 +171,20 @@
 **CP-G2 = 工程面 PASS。** Gate-G 的宣布条件（§6）：Alicia 听完 en/de/it/mixed（身份 + 吐字）→ A7 记录 → README milestone + 计划状态改 PASS → TTS 仓推送（逐条披露）。
 
 **收口清单（待她听判后逐项）**：① A7 记录听判结论；② 计划状态行改 PASS；③ README milestone 更新（builder）；④ TTS 仓推送（builder；现 16+ 条未推、逐条披露；我复核后收存）；⑤ 不扩张：send_voice_msg 后续 checkpoint 不随本计划开工（§0）。
+
+## Addendum A7 — Gate-G PASS（Alicia 听判完成）（2026-09-28）
+
+**听判原话：** “听完了，同一人！没问题！”
+
+**样本清单（G-06 现场证据）**：
+- en：`11_en_baseline.wav`（299,564 B / 6.24 s）
+- de：`12_de_baseline.wav`（478,124 B / 9.96 s）
+- it：`13_it_baseline.wav`（322,604 B / 6.72 s）
+- mixed：`14_mixed_baseline.wav`（499,244 B / 10.40 s）
+- zh（先期已听判）：`probe_07_zh_baseline.wav`（10.32 s）、`probe_07_zh_short_style.wav`（7.12 s）、`probe_06_direct_zh.wav`（8.68 s）
+
+**判定**：身份（同一人）与吐字（无误）均通过；叠加此前的“指令未被念出 / 短风格可用 / 基线 vs 覆盖有可听差异”判词，**G-06 满足，Gate-G 全条件达成 → PASS**。
+
+**收口状态**：① A7 本记录 ✓；②③ README milestone 与计划头部状态改 PASS（builder，按 §6）；④ TTS 仓推送（builder 先发 origin/main 到 HEAD 完整清单供复核、逐条披露，再推；以 A7 落地后的 HEAD 为准）；⑤ 不扩张：send_voice_msg 后续 checkpoint 不随本计划开工。
+
+**预算终账**：18/18（含 builder 失误造成的 3 次无效渲染）；无其它待花项。
