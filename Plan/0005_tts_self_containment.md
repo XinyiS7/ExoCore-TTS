@@ -1,6 +1,6 @@
 # 0005 — TTS 自包含：不再隐式读兄弟仓 `ExoCore/.env`
 
-> **状态**：IMPLEMENTED（5 个提交，**未推送**）——builder 证据见 §8，待 pane 5（Solaire · Acceptance）独立复核。
+> **状态**：IMPLEMENTED（原子提交，**未推送**）——builder 证据见 §8；独立复核 Core/spec/tests PASS（215/215），收口修复见 §9。
 > **施工边界**：不改 ExoCore / Runtime / Desktop；**不做真实 provider/synthesis 调用、不重启服务、不推送**；
 > 既有 owner 脏项（`.gitignore`、`.env`、`ai_studio_code.py` 及其它 scratch）一律原样保留、**不得暂存**。
 
@@ -80,3 +80,13 @@
 - **约束遵守**：无真实 provider/synthesis 调用、无服务重启、无推送；owner 脏项（`M .gitignore`、
   `?? ai_studio_code.py`、`.env`）全程未动、未暂存。
 - **冻结证据**：`Plan/0002`、`0003`、`0004*` 历史文档一字未改（修正索引见 §6）。
+
+## 9. 收口修复（acceptance-directed）
+
+- **采纳 owner 的 `.gitignore` 编辑入本计划授权范围**：该编辑经逐字确认，**仅新增一行根 `.env`**、无其它改动；
+  与本计划「本仓 `.env` 成为 canonical secret storage」直接相关，故随本计划一并提交——此前只有工作区忽略它，
+  `HEAD` 里的 `.gitignore` 并不包含该行，**新克隆不会忽略 `.env`**。
+- **校验**：`.env` 未被跟踪；`git check-ignore -v .env` 命中 `.gitignore`；已跟踪文件中不存在任何 `.env`
+  （唯一匹配 `env` 的是探针脚本 `keyenv.py`）；`ai_studio_code.py` 保持未跟踪、未触碰；提交只含
+  `.gitignore` 与本 memo。
+- **本状态行更正**：原文写死了提交条数（与修复前区间不一致）；现不写死任何自指计数。
