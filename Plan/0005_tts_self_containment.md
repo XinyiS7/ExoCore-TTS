@@ -1,6 +1,6 @@
 # 0005 — TTS 自包含：不再隐式读兄弟仓 `ExoCore/.env`
 
-> **状态**：READY FOR CONSTRUCTION — Alicia 已授权（2026-09-28）；范围仅 `ExoCore-TTS` 单仓。
+> **状态**：IMPLEMENTED（5 个提交，**未推送**）——builder 证据见 §8，待 pane 5（Solaire · Acceptance）独立复核。
 > **施工边界**：不改 ExoCore / Runtime / Desktop；**不做真实 provider/synthesis 调用、不重启服务、不推送**；
 > 既有 owner 脏项（`.gitignore`、`.env`、`ai_studio_code.py` 及其它 scratch）一律原样保留、**不得暂存**。
 
@@ -67,3 +67,16 @@
 ## 7. 交付物 / 停止条件
 
 变更提交（**不推送**）＋ 全量测试与门禁输出 ＋ 精确基线脏项清单 → 交 pane 5（Solaire · Acceptance）复核；到点即停。
+
+## 8. 施工结果（builder 证据 — 待独立复核，非 verdict）
+
+- **提交（原子，不推送）**：`1ac6e1d` memo → `d1ebd09` config 默认本仓 → `5996483` cloud 解析器
+  （含 headline 回归与解析矩阵）→ `a3d38a7` verify 统一 → 文档（README + 两个工具 docstring）→ 本条记录。
+- **测试**：全量 **215/215 OK**（改动前 193；净增 22 = 新文件 20 例 + `test_verify` key 用例 +2）。
+  新增文件：`tests/test_self_containment.py`（路径默认 3 / 兄弟仓隔离 3 / 优先级 6 / 解析矩阵 8）。
+- **headline 回归**：伪造 `tmp/ExoCore/.env`（内含可用形参的 key）+ 本仓 `.env` 缺失 → `read_api_key()`
+  失败，且错误串不含兄弟仓 key 值（正反两向断言）。
+- **门禁**：`git diff --check` 干净；逐文件无 CRLF；`compileall` OK；`ruff` 本机环境未安装（已记录，未跳过其它静态检查）。
+- **约束遵守**：无真实 provider/synthesis 调用、无服务重启、无推送；owner 脏项（`M .gitignore`、
+  `?? ai_studio_code.py`、`.env`）全程未动、未暂存。
+- **冻结证据**：`Plan/0002`、`0003`、`0004*` 历史文档一字未改（修正索引见 §6）。
