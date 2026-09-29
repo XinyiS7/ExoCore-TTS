@@ -4,7 +4,7 @@ Environment overrides (all optional):
     EXOCORE_TTS_HOME                    data root                (default: repository root)
     EXOCORE_TTS_VOICE_ROOT              canonical voice assets   (default: <root>/voices)
     EXOCORE_TTS_CANDIDATE_ROOT          casting output root      (default: <root>/candidates)
-    EXOCORE_TTS_DOTENV                  env file holding the cloud API key
+    EXOCORE_TTS_DOTENV                  cloud API key file override   (default: <root>/.env)
     EXOCORE_TTS_HOST                    bind address             (default: 127.0.0.1)
     EXOCORE_TTS_PORT                    bind port                (default: 8769)
     EXOCORE_TTS_TOKEN                   bearer token             (default: empty = no auth)
@@ -15,6 +15,10 @@ The bind address is a start-up hard gate, not a hint: a non-loopback host is ref
 when a token is configured, because a token is extra protection on loopback -- it does not
 make this daemon safe to expose (Plan/0003 §6). Nothing in this package may import Django
 or reach into ExoCore.
+
+That last sentence is also true of credentials: the cloud key is read from this repository's
+own `.env` (or the process environment), and the sibling ExoCore checkout is never consulted
+implicitly (Plan/0005).
 """
 from __future__ import annotations
 
@@ -124,10 +128,11 @@ def candidate_root() -> Path:
 
 
 def dotenv_path() -> Path:
-    """Env file to read the cloud API key from.
+    """Env file to read the cloud API key from: **this repository's own `.env`**.
 
-    Defaults to the sibling ExoCore checkout: the key lives there, and this factory must not
-    keep a second copy of a secret. Missing file is reported by whichever tool needs the key.
+    The factory is self-contained (Plan/0005): the sibling ExoCore checkout is never read
+    implicitly. `EXOCORE_TTS_DOTENV` points at a different file only as an explicit choice,
+    and then it is used alone -- a missing explicit path is an error, not a reason to fall
+    back here.
     """
-    default = repo_root().parent / "ExoCore" / ".env"
-    return _resolve("EXOCORE_TTS_DOTENV", default)
+    return _resolve("EXOCORE_TTS_DOTENV", repo_root() / ".env")
