@@ -18,7 +18,7 @@ import re
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from exocore_tts import config
+from exocore_tts import cloud
 from exocore_tts.casting import MANIFEST_NAME
 
 DEFAULT_TRANSCRIBE_MODEL = "gemini-2.5-flash"
@@ -84,16 +84,13 @@ def similarity(intended: str, heard: str, language: str) -> float:
 
 
 def read_api_key(dotenv: Path | None = None) -> str:
-    """Read GEMINI_API_KEY from the ExoCore env file. Never logs or returns it anywhere else."""
-    path = Path(dotenv) if dotenv else config.dotenv_path()
-    if not path.is_file():
-        raise FileNotFoundError(
-            f"No env file at {path}. Point EXOCORE_TTS_DOTENV at the file holding GEMINI_API_KEY."
-        )
-    for line in path.read_text(encoding="utf-8", errors="ignore").splitlines():
-        if line.startswith("GEMINI_API_KEY="):
-            return line.split("=", 1)[1].strip().strip('"').strip("'")
-    raise KeyError(f"GEMINI_API_KEY is not set in {path}")
+    """The cloud key, resolved by the one shared reader: `cloud.read_api_key`.
+
+    Kept as a named entry point for the factory tools; semantics and errors are exactly the
+    daemon's -- a non-empty process `GEMINI_API_KEY` first, then this repository's own `.env`
+    (canonical `GEM_TTS_KEY`, then the legacy `GEMINI_API_KEY`). Never logged.
+    """
+    return cloud.read_api_key(dotenv)
 
 
 def transcribe(client, clip: Path, language: str, model: str = DEFAULT_TRANSCRIBE_MODEL) -> str:

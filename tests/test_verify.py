@@ -1,10 +1,14 @@
 """Spot check logic: normalisation, similarity, verdict rules. No network, no GPU."""
 import json
+import os
 import tempfile
 import unittest
 from pathlib import Path
+from unittest import mock
 
-from exocore_tts import verify
+from exocore_tts import cloud, verify
+
+CLEAN_ENV = {"GEMINI_API_KEY": "", "EXOCORE_TTS_DOTENV": ""}
 
 
 class FakeClient:
@@ -133,23 +137,42 @@ class BatchTests(unittest.TestCase):
 
 
 class KeyTests(unittest.TestCase):
+    """The verify tooling shares the one key reader (Plan/0005): same semantics, same error,
+    no second parser -- and the key value itself never appears in a message."""
+
     def test_missing_env_file_is_reported_not_swallowed(self):
         with tempfile.TemporaryDirectory() as tmp:
-            with self.assertRaises(FileNotFoundError):
-                verify.read_api_key(Path(tmp) / "nope.env")
+            with mock.patch.dict(os.environ, CLEAN_ENV):
+                with self.assertRaises(cloud.CloudError) as caught:
+                    verify.read_api_key(Path(tmp) / "nope.env")
+        self.assertIn("nope.env", str(caught.exception))
 
     def test_key_is_read_and_stripped(self):
         with tempfile.TemporaryDirectory() as tmp:
             env = Path(tmp) / ".env"
             env.write_text('OTHER=1\nGEMINI_API_KEY="abc123"\n', encoding="utf-8")
-            self.assertEqual(verify.read_api_key(env), "abc123")
+            with mock.patch.dict(os.environ, CLEAN_ENV):
+                self.assertEqual(verify.read_api_key(env), "abc123")
+
+    def test_canonical_name_is_read_as_well(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            env = Path(tmp) / ".env"
+            env.write_text("GEM_TTS_KEY='abc123'\n", encoding="utf-8")
+            with mock.patch.dict(os.environ, CLEAN_ENV):
+                self.assertEqual(verify.read_api_key(env), "abc123")
+
+    def test_process_environment_wins_over_the_file(self):
+        with mock.patch.dict(os.environ, {**CLEAN_ENV, "GEMINI_API_KEY": "abc123"}):
+            self.assertEqual(verify.read_api_key(Path("does-not-exist.env")), "abc123")
 
     def test_missing_key_names_the_variable(self):
         with tempfile.TemporaryDirectory() as tmp:
             env = Path(tmp) / ".env"
             env.write_text("OTHER=1\n", encoding="utf-8")
-            with self.assertRaises(KeyError):
-                verify.read_api_key(env)
+            with mock.patch.dict(os.environ, CLEAN_ENV):
+                with self.assertRaises(cloud.CloudError) as caught:
+                    verify.read_api_key(env)
+        self.assertIn("GEMINI_API_KEY", str(caught.exception))
 
 
 if __name__ == "__main__":
