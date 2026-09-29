@@ -4,8 +4,9 @@
     E:/Miniconda3/envs/voxcpm_runtime/python.exe tools/verify_audio.py \
         --batch candidates/final_test --language zh
 
-Needs a cloud API key (read from the sibling ExoCore `.env` by default; override with
-EXOCORE_TTS_DOTENV). Costs a few seconds of audio per pass, no GPU.
+Needs a cloud API key (read from the process environment or this repository's own `.env`;
+EXOCORE_TTS_DOTENV points at another file, explicitly and alone). Costs a few seconds of audio
+per pass, no GPU.
 """
 import sys
 

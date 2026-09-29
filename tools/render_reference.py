@@ -11,8 +11,9 @@ to `tools/cast.py register` together with the exact transcript.
         --out candidates/zh_v8_v2 --label v8_v2 --takes 2
 
 Run it with the service environment (`voxcpm_runtime`): it holds google-genai plus the
-audio stack. The key is read from `GEMINI_API_KEY` or the sibling ExoCore `.env`, and is
-never printed.
+audio stack. The key is read from the process environment (`GEMINI_API_KEY`) or this
+repository's own `.env` (`GEM_TTS_KEY`, then the legacy `GEMINI_API_KEY`); the sibling ExoCore
+checkout is never read implicitly (Plan/0005). The value is never printed.
 """
 from __future__ import annotations
 

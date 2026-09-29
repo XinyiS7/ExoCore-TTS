@@ -108,8 +108,9 @@ E:/Miniconda3/envs/voxcpm_runtime/python.exe tools/create_cloud_voice.py        
 E:/Miniconda3/envs/voxcpm_runtime/python.exe tools/render_reference.py     --record tools/cloud/voices/ale.json --text-file <逐字稿文件>     --style-file tools/cloud/prompts/recipe_zh.txt     --out candidates/<batch> --label <名字> --takes 2
 ```
 
-API key 只在调用时从 `GEMINI_API_KEY` 或 `ExoCore/.env` 现取：**不进本仓、不打印**，报错信息也过
-`scrub_secrets`。渲出来的音频用 `tools/cast.py register` 冻结（逐字稿是强制项）。
+API key 只在调用时现取：**进程环境 `GEMINI_API_KEY` 优先，其次本仓 `.env`**（canonical `GEM_TTS_KEY`，
+兼容旧名 `GEMINI_API_KEY`）——**绝不隐式读兄弟仓 `ExoCore/.env`**（Plan/0005）。值**不进版本库、不打印**，
+报错信息也过 `scrub_secrets`。渲出来的音频用 `tools/cast.py register` 冻结（逐字稿是强制项）。
 
 ### 生产云端引擎（`engine = "gemini"`，Plan/0004 CP-G1）
 
@@ -140,7 +141,8 @@ E:/Miniconda3/envs/voxcpm_runtime/python.exe tools/register_cloud_voice.py \
   每请求风格覆盖可行；② **key 必须来自拥有该声线的 project**——用错 project 的 key 会表现为
   `404 not-found`，排查时先验 key（长度断言 + 免费 `voices.get` 预检，见
   `Plan/0004_cp_g2_runbook.md` §8）；③ 基线风格里的 "unhurried/deliberate" 取向会让默认语速偏慢，
-  接口无种子（每次抽取不同），需要稳定节奏时用 `delivery` 约束。
+  接口无种子（每次抽取不同），需要稳定节奏时用 `delivery` 约束；④ key 解析已改为**自包含**（Plan/0005）：
+  进程 env > 本仓 `.env`（`GEM_TTS_KEY` → `GEMINI_API_KEY`），`EXOCORE_TTS_DOTENV` **显式独占**、无链式回退。
 
 ## 里程碑
 
@@ -259,7 +261,7 @@ E:/Miniconda3/envs/voxcpm_runtime/python.exe tools/verify_audio.py --clip foo.wa
 | `listen` | 没听全但内容大体在，大概率是语调所致，值得人耳一听 |
 | `suspect` | 内容本身没出来（丢词 / 串音 / 元音发错） |
 
-退出码：出现 `suspect` 为 1（便于 M2 接进验证环节）。需要云端 key，默认读隔壁 `ExoCore/.env`，可用 `EXOCORE_TTS_DOTENV` 覆盖。
+退出码：出现 `suspect` 为 1（便于 M2 接进验证环节）。需要云端 key：默认读**本仓 `.env`**（`GEM_TTS_KEY`，兼容 `GEMINI_API_KEY`）；`EXOCORE_TTS_DOTENV` 可**显式**指向别的文件（独占使用，不回退）。
 
 ## 与其它仓库的关系
 
