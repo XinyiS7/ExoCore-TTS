@@ -4,9 +4,11 @@ The local VoxCPM2 engine clones references; this module renders those references
 cloud voice resource. Everything here exists to produce a clip whose transcript is known
 exactly, because ultimate cloning needs both halves (audio + what it says).
 
-The API key is never copied into this repository and never printed: it is read at call time
-from `GEMINI_API_KEY` or the sibling ExoCore `.env`, and any error text on the way out passes
-through `scrub_secrets`.
+The API key is never copied into version control and never printed: it is read at call time
+from the process environment (`GEMINI_API_KEY`) or from *this repository's own* `.env`
+(`GEM_TTS_KEY` first, then the legacy `GEMINI_API_KEY` name). The sibling ExoCore checkout is
+never consulted implicitly -- pointing at another file is an explicit `EXOCORE_TTS_DOTENV`
+decision (Plan/0005). Any error text on the way out passes through `scrub_secrets`.
 """
 from __future__ import annotations
 
@@ -18,6 +20,9 @@ from . import config
 
 MODEL = "gemini-3.8-flash-tts"
 DEFAULT_ENV_VAR = "GEMINI_API_KEY"
+# Key-file names in precedence order: the canonical name this repository uses today, then the
+# legacy name from before the factory kept its own key file. Both are looked for in one file.
+DOTENV_KEY_NAMES = ("GEM_TTS_KEY", "GEMINI_API_KEY")
 
 
 class CloudError(RuntimeError):
@@ -75,19 +80,64 @@ def wav_seconds(data: bytes) -> float:
     return (len(data) - 44) / block / rate
 
 
+def _clean_env_value(raw: str) -> str:
+    """Strip whitespace and one layer of *matching* quotes; empty means unset."""
+    text = raw.strip()
+    if len(text) >= 2 and text[0] == text[-1] and text[0] in "\"'":
+        text = text[1:-1]
+    return text.strip()
+
+
+def dotenv_value(path: Path, names: tuple[str, ...] = DOTENV_KEY_NAMES) -> str | None:
+    """First non-empty value among `names` in a dotenv-style file, or `None` if absent.
+
+    Deliberately literal and bounded: one `NAME=value` per line, CR/LF tolerated, optional
+    matching quotes around the value, blank/comment lines ignored, exact name matching (so
+    `GEM_TTS_KEY_OLD` is never mistaken for `GEM_TTS_KEY`), first non-empty value per name
+    wins, and no `export`/expansion/override semantics. A missing file is `None`, not an
+    error -- the caller decides how loudly to fail. No environment is consulted here.
+    """
+    if not path.is_file():
+        return None
+    wanted = set(names)
+    found: dict[str, str] = {}
+    for raw in path.read_text(encoding="utf-8", errors="ignore").splitlines():
+        line = raw.strip()
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+        name, _, raw_value = line.partition("=")
+        name = name.strip()
+        if name in wanted and name not in found:
+            value = _clean_env_value(raw_value)
+            if value:
+                found[name] = value
+    for name in names:
+        if name in found:
+            return found[name]
+    return None
+
+
 def read_api_key(dotenv: Path | None = None, env_var: str = DEFAULT_ENV_VAR) -> str:
-    """Environment first, then the ExoCore `.env`. The result is never logged."""
+    """The one cloud-key reader: the process environment first, then this repository's `.env`.
+
+    Precedence (frozen by Plan/0005): a non-empty process `env_var` wins; otherwise the
+    resolved key file -- an explicit `dotenv` argument, else `EXOCORE_TTS_DOTENV`, else
+    `<repo>/.env` -- is read for the canonical `GEM_TTS_KEY` and then the legacy
+    `GEMINI_API_KEY`. The value is never logged, and the error names only the variable and
+    the path.
+    """
     value = os.environ.get(env_var, "").strip()
     if value:
         return value
     path = Path(dotenv) if dotenv else config.dotenv_path()
-    if path.is_file():
-        for line in path.read_text(encoding="utf-8", errors="ignore").splitlines():
-            if line.startswith(f"{env_var}="):
-                candidate = line.split("=", 1)[1].strip().strip('"').strip("'")
-                if candidate:
-                    return candidate
-    raise CloudError(f"no {env_var} in the environment or in {path}")
+    found = dotenv_value(path)
+    if found:
+        return found
+    names = " or ".join(DOTENV_KEY_NAMES)
+    raise CloudError(
+        f"no {env_var} in the environment and no {names} in {path}; "
+        "keep the key in this repository's own .env or export it explicitly"
+    )
 
 
 def load_sdk() -> None:
