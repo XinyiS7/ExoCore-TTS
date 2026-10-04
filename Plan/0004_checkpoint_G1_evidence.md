@@ -42,6 +42,9 @@
 6. CP-G2 素材线索（**未登记、未验证**）：`ai_studio_code.py`（工作区里 Alicia 的 AI Studio
    模板，untracked、无明文凭据）用 `prebuilt_voice_config(voice_name="Ale 2.5 2")` 指向原始声线，
    且 style 以 `"Style: "` 前缀传入。CP-G2 第 1 步 preflight 就以「当前 key + 该引用」为准。
+   > **2026-10-04 注：** 该工作区模板已由 Alicia 批准删除；其 `voice_name` 与 style 全文均冗余
+   > 保存于 tracked 的 `voices/*/voice.json`、`README.md` 与 `tools/register_cloud_voice.py`。
+   > 本条保留为当时的线索记录。
 
 ## 3. 验证事实（全部离线，无网络、无 key、无 GPU 加载）
 

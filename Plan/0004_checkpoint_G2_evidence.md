@@ -89,6 +89,10 @@ name 放进 voice= 槽            : 400（invalid argument）
 未消耗首轮语料、未触碰 `.gitignore` 与 `ai_studio_code.py`。probe #4（选项 C）与 #5 均在 Alicia
 明示授权（"c可以，测一下吧"）与授权预算（≤8）内执行。
 
+> **2026-10-04 注：** `ai_studio_code.py` 已由 Alicia 批准从工作区删除；其 `voice_name` 与 style
+> 全文均冗余保存于 tracked 的 `voices/*/voice.json`、`README.md` 与
+> `tools/register_cloud_voice.py`。本条保留为当时的边界声明。
+
 ## 7. 真机轮（runbook §3）—— job 09 **STOPPED**（2026-09-27 23:53）
 
 - 唯一一次请求：`09_zh_Bleg_delivery`（中文 19 字 + `delivery` = `"Style: "` + §6 片段，**441 字符**）

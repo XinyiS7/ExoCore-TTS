@@ -80,6 +80,10 @@ preflight，且第 10 次渲染（zh 基线）会再次验证基线路径；重�
 
 不碰：wire 三字段、`cloud_voice_ref` 语义、CP-G1 已验收的回归面、`.env` / `.gitignore` / `ai_studio_code.py`。
 
+> **2026-10-04 注：** `ai_studio_code.py` 已由 Alicia 批准从工作区删除（不在本 runbook 范围）；
+> 其 `voice_name` 与 style 全文均冗余保存于 tracked 的 `voices/*/voice.json`、`README.md` 与
+> `tools/register_cloud_voice.py`，本“不碰”边界对其余项仍有效。
+
 ## 7. A3 轮修订（2026-09-27 23:56）
 
 - job10（中文 + 基线）仍 404 → **全停**；差异核对结果：key / 声线 / style / 模型 / 温度 / part 形状
